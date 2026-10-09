@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function: is owner of user doc
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function: is admin (checks custom claims or Firestore users collection)
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'ADMIN' || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'));
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Rooms Collection: Public read, Admin write
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Bookings Collection
+    match /bookings/{bookingId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if true; // Allowed for customer reservation submissions
+      allow update, delete: if isAdmin();
+    }
+
+    // Reviews Collection: Public read approved, customer create
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'APPROVED' || isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Availability Blocks
+    match /availabilityBlocks/{blockId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Notification and Audit Logs
+    match /notificationLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /auditLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
