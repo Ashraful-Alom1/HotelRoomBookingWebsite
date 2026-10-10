@@ -19,7 +19,7 @@ function RoomsContent() {
     category: searchParams.get("category") || "ALL",
     isAC: searchParams.get("isAC") !== null ? searchParams.get("isAC") === "true" : undefined,
     minPrice: undefined,
-    maxPrice: 600,
+    maxPrice: 15000,
     guests: searchParams.get("guests") ? parseInt(searchParams.get("guests")!) : undefined,
     sortBy: "price_asc",
   });
@@ -79,7 +79,7 @@ function RoomsContent() {
           ) : rooms.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {rooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
+                <RoomCard key={room.id} room={room} allRooms={rooms} />
               ))}
             </div>
           ) : (
@@ -96,7 +96,7 @@ function RoomsContent() {
                     category: "ALL",
                     isAC: undefined,
                     minPrice: undefined,
-                    maxPrice: 600,
+                    maxPrice: 15000,
                     guests: undefined,
                     sortBy: "price_asc",
                   })

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Room } from "@/types";
+import { getRooms } from "@/services/roomsService";
 import BookingPopupModal from "@/components/booking/BookingPopupModal";
 import {
   X,
@@ -22,6 +23,8 @@ import {
   Layers,
   ShieldCheck,
   ArrowRight,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 
 interface RoomViewModalProps {
@@ -41,6 +44,9 @@ export default function RoomViewModal({
   const [activeCategory, setActiveCategory] = useState<"ROOM" | "TOILET" | "WASHROOM">("ROOM");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [bookingPopupOpen, setBookingPopupOpen] = useState(false);
+  const [roomsList, setRoomsList] = useState<Room[]>(allRooms);
+
+  const modalBodyRef = useRef<HTMLDivElement>(null);
 
   // Sync currentRoom if initial prop changes
   useEffect(() => {
@@ -49,9 +55,22 @@ export default function RoomViewModal({
     setSelectedImageIndex(0);
   }, [room]);
 
+  // Ensure other rooms are always loaded and visible automatically
+  useEffect(() => {
+    if (allRooms && allRooms.length > 1) {
+      setRoomsList(allRooms);
+    } else {
+      getRooms().then((data) => {
+        if (data && data.length > 0) {
+          setRoomsList(data);
+        }
+      });
+    }
+  }, [allRooms]);
+
   if (!isOpen) return null;
 
-  // Prepare images strictly matching user's structure:
+  // Prepare images strictly matching structure:
   // 3 room view images, 2 toilet images, 1 washroom image
   const roomImages =
     currentRoom.gallery && currentRoom.gallery.length >= 3
@@ -112,6 +131,19 @@ export default function RoomViewModal({
     setCurrentRoom(newRoom);
     setActiveCategory("ROOM");
     setSelectedImageIndex(0);
+    modalBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDropToMainRoomsSection = () => {
+    onClose();
+    setTimeout(() => {
+      const el = document.getElementById("popular-rooms");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      } else {
+        window.location.href = "/#popular-rooms";
+      }
+    }, 100);
   };
 
   // Direct WhatsApp Booking link in Indian Currency to 8822308551
@@ -120,13 +152,22 @@ export default function RoomViewModal({
     `Hello Resort Hotel!\n\nI want to book the *${currentRoom.name}*.\n` +
       `• Rate: ₹${currentRoom.pricePerNight.toLocaleString("en-IN")} INR / night\n` +
       `• Type: ${currentRoom.isAC ? "Air Conditioned (AC)" : "Non-AC"}\n` +
-      `• Bed Capacity: ${currentRoom.bedType} (Max ${currentRoom.maxGuests} Guests)\n\n` +
+      `• Bed Capacity: ${currentRoom.bedType} (Max ${currentRoom.maxGuests} Guests)\n` +
+      `• Location: ${currentRoom.location || "Resort Hotel"}\n\n` +
       `Please let me know the availability and confirmation details.`
   );
   const directWhatsAppUrl = `https://wa.me/91${whatsappNumber}?text=${waText}`;
 
-  // Other rooms to show in scrolling row below
-  const otherRoomsList = allRooms.filter((r) => r.id !== currentRoom.id && r.slug !== currentRoom.slug);
+  // Other rooms to show in scrolling row below (automatically guaranteed)
+  const otherRoomsList = roomsList.filter(
+    (r) => r.id !== currentRoom.id && r.slug !== currentRoom.slug
+  );
+
+  const googleMapEmbedSrc =
+    currentRoom.googleMapEmbedUrl ||
+    `https://maps.google.com/maps?q=${encodeURIComponent(
+      currentRoom.location || "Cox's Bazar Hotel"
+    )}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
 
   return (
     <>
@@ -151,7 +192,7 @@ export default function RoomViewModal({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover:bg-slate-200 text-slate-600 transition-colors"
+              className="p-2 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -159,12 +200,12 @@ export default function RoomViewModal({
           </div>
 
           {/* Modal Body - Scrollable */}
-          <div className="overflow-y-auto p-6 space-y-6">
+          <div ref={modalBodyRef} className="overflow-y-auto p-6 space-y-6">
             {/* Gallery Category Navigation Tabs */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
               <button
                 onClick={() => handleCategoryChange("ROOM")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   activeCategory === "ROOM"
                     ? "bg-[#F5A623] text-black shadow-md"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -176,113 +217,110 @@ export default function RoomViewModal({
 
               <button
                 onClick={() => handleCategoryChange("TOILET")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   activeCategory === "TOILET"
                     ? "bg-[#F5A623] text-black shadow-md"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
-                <Bath className="w-4 h-4" />
-                Toilets (2 Images)
+                <Sparkles className="w-4 h-4" />
+                Toilet Views (2 Images)
               </button>
 
               <button
                 onClick={() => handleCategoryChange("WASHROOM")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   activeCategory === "WASHROOM"
                     ? "bg-[#F5A623] text-black shadow-md"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
-                <Sparkles className="w-4 h-4" />
-                Washroom (1 Image)
+                <Bath className="w-4 h-4" />
+                Washroom Views (1 Image)
               </button>
             </div>
 
-            {/* Interactive Image Viewer */}
-            <div className="space-y-3">
-              <div className="relative aspect-[16/9] md:aspect-[21/9] w-full rounded-xl overflow-hidden bg-slate-900 group shadow-md border border-slate-200">
-                <Image
-                  src={currentImageUrl}
-                  alt={currentImageAlt}
-                  fill
-                  priority
-                  unoptimized
-                  quality={100}
-                  className="object-cover transition-all duration-300"
-                />
+            {/* Featured Photo Viewer Stage */}
+            <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full bg-slate-900 rounded-xl overflow-hidden group shadow-inner">
+              <Image
+                src={currentImageUrl}
+                alt={currentImageAlt}
+                fill
+                unoptimized
+                quality={100}
+                className="object-cover"
+              />
 
-                {/* Left/Right navigation if more than 1 image in category */}
-                {currentCategoryImages.length > 1 && (
-                  <>
-                    <button
-                      onClick={handlePrevImage}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-[#F5A623] text-white hover:text-black flex items-center justify-center transition-all shadow-md"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={handleNextImage}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 hover:bg-[#F5A623] text-white hover:text-black flex items-center justify-center transition-all shadow-md"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
+              {/* Slider Arrows */}
+              {currentCategoryImages.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevImage}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-[#F5A623] text-white hover:text-black transition-all cursor-pointer z-10"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
 
-                {/* Active Image Badge */}
-                <div className="absolute bottom-3 left-4 bg-black/75 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-md font-semibold">
-                  {activeCategory === "ROOM" && `Room View ${selectedImageIndex + 1} of 3`}
-                  {activeCategory === "TOILET" && `Toilet View ${selectedImageIndex + 1} of 2`}
-                  {activeCategory === "WASHROOM" && "Washroom View 1 of 1"}
-                </div>
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-[#F5A623] text-white hover:text-black transition-all cursor-pointer z-10"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
 
-                {/* Indian Currency Price Tag in Top Right corner */}
-                <div className="absolute top-3 right-3 bg-[#F5A623] text-slate-950 font-black text-lg px-4 py-1.5 rounded shadow-lg">
-                  ₹{currentRoom.pricePerNight.toLocaleString("en-IN")}
-                </div>
+              {/* Counter Pill */}
+              <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-bold">
+                {selectedImageIndex + 1} / {currentCategoryImages.length}
               </div>
 
-              {/* Thumbnails row */}
-              <div className="flex gap-2.5 overflow-x-auto pb-1">
-                {currentCategoryImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`relative w-24 h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all cursor-pointer ${
-                      selectedImageIndex === idx
-                        ? "border-[#F5A623] scale-105 shadow-md"
-                        : "border-transparent opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <Image
-                      src={img.secureUrl}
-                      alt={img.altText || `Thumbnail ${idx + 1}`}
-                      fill
-                      unoptimized
-                      quality={100}
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
+              {/* Caption */}
+              <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full">
+                {currentImageAlt}
               </div>
             </div>
 
-            {/* Details & Specs Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-              {/* Left Column: Room Overview */}
-              <div className="md:col-span-2 space-y-4">
+            {/* Thumbnail Strip */}
+            <div className="grid grid-cols-6 sm:grid-cols-6 gap-2">
+              {currentCategoryImages.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImageIndex(idx)}
+                  className={`relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                    selectedImageIndex === idx
+                      ? "border-[#F5A623] scale-[1.03] shadow-md"
+                      : "border-transparent opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <Image
+                    src={img.secureUrl}
+                    alt={img.altText || `Thumb ${idx}`}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Room Details & Pricing Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+              {/* Left Column (2 cols): Details, Specs, Facilities */}
+              <div className="lg:col-span-2 space-y-4">
                 <div>
                   <h3 className="font-serif-luxury text-xl font-bold text-slate-900">
-                    Room Overview & Specifications
+                    Room Overview
                   </h3>
-                  <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
                     {currentRoom.description}
                   </p>
                 </div>
 
-                {/* Specs Badges */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                {/* Key Specifications Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs">
                   <div className="flex items-center gap-2 text-slate-700">
                     <Bed className="w-4 h-4 text-[#F5A623]" />
                     <span className="font-semibold">{currentRoom.bedType}</span>
@@ -292,8 +330,8 @@ export default function RoomViewModal({
                     <span className="font-semibold">Max {currentRoom.maxGuests} Guests</span>
                   </div>
                   <div className="flex items-center gap-2 text-slate-700">
-                    <Clock className="w-4 h-4 text-[#F5A623]" />
-                    <span className="font-semibold">7 Days 6 Nights</span>
+                    <Maximize2 className="w-4 h-4 text-[#F5A623]" />
+                    <span className="font-semibold">{currentRoom.roomSize}</span>
                   </div>
                   <div className="flex items-center gap-2 text-slate-700">
                     {currentRoom.isAC ? (
@@ -366,7 +404,7 @@ export default function RoomViewModal({
                     href={directWhatsAppUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95"
+                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     <MessageSquare className="w-4 h-4" />
                     Book via WhatsApp ({whatsappNumber})
@@ -384,6 +422,54 @@ export default function RoomViewModal({
             </div>
 
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/* GOOGLE MAP & HOTEL LOCATION SECTION */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            <div className="pt-6 border-t border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-[#F5A623] flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-[#F5A623]" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif-luxury text-base font-bold text-slate-900">
+                      Hotel Location on Google Map
+                    </h4>
+                    <p className="text-xs text-slate-600 flex items-center gap-1">
+                      <span>{currentRoom.location || "Marine Drive Beachfront Zone, Cox's Bazar"}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    currentRoom.location || currentRoom.name + " Hotel"
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#F5A623] hover:text-black text-slate-700 text-xs font-bold transition-all shadow-sm cursor-pointer w-fit"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-[#F5A623]" />
+                  Open in Google Maps
+                </a>
+              </div>
+
+              {/* Embedded Interactive Google Map */}
+              <div className="w-full h-60 sm:h-72 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner relative">
+                <iframe
+                  title={`Google Map - ${currentRoom.name}`}
+                  src={googleMapEmbedSrc}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="w-full h-full"
+                />
+              </div>
+            </div>
+
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {/* DYNAMIC SCROLLING CAROUSEL: BROWSE OTHER DIFFERENT ROOMS BELOW */}
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {otherRoomsList.length > 0 && (
@@ -394,7 +480,7 @@ export default function RoomViewModal({
                       Explore Other Different Rooms & Suites
                     </h4>
                     <p className="text-xs text-slate-500">
-                      Click any suite below to view its 3 room images, 2 toilets, 1 washroom & details
+                      Click any suite below to view its 3 room images, 2 toilets, 1 washroom, location & details
                     </p>
                   </div>
                   <span className="text-xs font-bold text-slate-400">
@@ -411,7 +497,11 @@ export default function RoomViewModal({
                     >
                       <div className="relative aspect-[16/10] w-full bg-slate-200">
                         <Image
-                          src={otherRoom.coverImage?.secureUrl || otherRoom.gallery?.[0]?.secureUrl || "/images/rooms/HotelRoom.jpg"}
+                          src={
+                            otherRoom.coverImage?.secureUrl ||
+                            otherRoom.gallery?.[0]?.secureUrl ||
+                            "/images/rooms/HotelRoom.jpg"
+                          }
                           alt={otherRoom.name}
                           fill
                           unoptimized
@@ -440,6 +530,12 @@ export default function RoomViewModal({
                         <p className="text-[11px] text-slate-500 truncate">
                           {otherRoom.bedType} • Max {otherRoom.maxGuests} Guests
                         </p>
+                        {otherRoom.location && (
+                          <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                            <MapPin className="w-2.5 h-2.5 text-[#F5A623] shrink-0" />
+                            {otherRoom.location}
+                          </p>
+                        )}
                         <div className="pt-2 flex items-center justify-between text-[11px]">
                           <span className="font-bold text-[#F5A623] flex items-center gap-1">
                             Switch View <ArrowRight className="w-3 h-3" />
@@ -449,6 +545,16 @@ export default function RoomViewModal({
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Button to smoothly drop down to the rooms main section */}
+                <div className="pt-2 flex justify-center">
+                  <button
+                    onClick={handleDropToMainRoomsSection}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-[#F5A623] hover:text-black text-slate-800 text-xs font-extrabold uppercase tracking-wider transition-all border border-slate-300 shadow-sm cursor-pointer"
+                  >
+                    Smoothly Browse All Suites in Main Catalog Section ↓
+                  </button>
                 </div>
               </div>
             )}
@@ -462,7 +568,7 @@ export default function RoomViewModal({
           isOpen={bookingPopupOpen}
           onClose={() => setBookingPopupOpen(false)}
           selectedRoom={currentRoom}
-          allRooms={allRooms}
+          allRooms={roomsList}
         />
       )}
     </>

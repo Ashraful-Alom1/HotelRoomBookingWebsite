@@ -47,6 +47,8 @@ export interface Room {
   washroomImages: GalleryImage[];
   averageRating: number;
   reviewCount: number;
+  location?: string;
+  googleMapEmbedUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

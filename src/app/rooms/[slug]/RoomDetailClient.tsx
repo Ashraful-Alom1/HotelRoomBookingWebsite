@@ -36,12 +36,14 @@ interface RoomDetailClientProps {
   room: Room | null;
   initialReviews: Review[];
   similarRooms: Room[];
+  allRooms?: Room[];
 }
 
 export default function RoomDetailClient({
   room,
   initialReviews,
   similarRooms,
+  allRooms = [],
 }: RoomDetailClientProps) {
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
@@ -475,6 +477,54 @@ export default function RoomDetailClient({
               </div>
             )}
           </div>
+
+          {/* Hotel Location & Interactive Google Map */}
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/15 text-[#D4AF37] flex items-center justify-center shrink-0 border border-[#D4AF37]/30">
+                  <MapPin className="w-5 h-5 text-[#D4AF37]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Hotel Location & Google Map</h3>
+                  <p className="text-xs text-slate-300">
+                    {room.location || "Marine Drive Beachfront Zone, Cox's Bazar"}
+                  </p>
+                </div>
+              </div>
+
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  room.location || room.name + " Hotel"
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-[#D4AF37] hover:text-black text-white text-xs font-bold transition-all border border-white/10 w-fit cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#D4AF37]" />
+                Open in Google Maps
+              </a>
+            </div>
+
+            <div className="w-full h-72 sm:h-80 rounded-2xl overflow-hidden border border-white/15 bg-slate-900 shadow-2xl relative">
+              <iframe
+                title={`Google Map Location - ${room.name}`}
+                src={
+                  room.googleMapEmbedUrl ||
+                  `https://maps.google.com/maps?q=${encodeURIComponent(
+                    room.location || "Cox's Bazar Hotel"
+                  )}&t=&z=14&ie=UTF8&iwloc=&output=embed`
+                }
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Right Column (1 Col): Sticky Booking Engine */}
@@ -483,20 +533,32 @@ export default function RoomDetailClient({
         </div>
       </div>
 
-      {/* 4. Similar Rooms Recommendation */}
+      {/* 4. Other Available Rooms & Accommodations */}
       {similarRooms.length > 0 && (
         <div className="space-y-6 pt-16 border-t border-white/10">
-          <div className="space-y-1">
-            <span className="text-xs uppercase font-bold tracking-widest text-[#D4AF37]">
-              Alternative Options
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Explore Similar Accommodations
-            </h2>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-xs uppercase font-bold tracking-widest text-[#D4AF37]">
+                Other Suites & Accommodations
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                Explore All Other Available Rooms
+              </h2>
+            </div>
+            <Link
+              href="/#popular-rooms"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D4AF37] hover:underline"
+            >
+              Smoothly View Main Catalog Section &rarr;
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {similarRooms.map((simRoom) => (
-              <RoomCard key={simRoom.id} room={simRoom} />
+              <RoomCard
+                key={simRoom.id}
+                room={simRoom}
+                allRooms={allRooms.length > 0 ? allRooms : [room, ...similarRooms]}
+              />
             ))}
           </div>
         </div>

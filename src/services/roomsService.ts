@@ -16,7 +16,7 @@ import { INITIAL_ROOMS_DATA } from "./seedService";
 const ROOMS_COLLECTION = "rooms";
 
 // In-memory initial rooms cache with IDs
-const FALLBACK_ROOMS: Room[] = INITIAL_ROOMS_DATA.map((r, i) => ({
+export const FALLBACK_ROOMS: Room[] = INITIAL_ROOMS_DATA.map((r, i) => ({
   ...r,
   id: `suite-${r.slug}`,
   createdAt: new Date().toISOString(),
@@ -37,16 +37,22 @@ export async function getRooms(filters?: RoomFilters): Promise<Room[]> {
 
   try {
     const roomsRef = collection(db, ROOMS_COLLECTION);
-    const snapshot = await getDocs(roomsRef);
+    const fetchPromise = getDocs(roomsRef);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Firestore timeout")), 1500)
+    );
+    const snapshot = (await Promise.race([fetchPromise, timeoutPromise])) as any;
 
-    snapshot.forEach((docSnap) => {
-      rooms.push({ id: docSnap.id, ...(docSnap.data() as Omit<Room, "id">) });
-    });
+    if (snapshot && snapshot.forEach) {
+      snapshot.forEach((docSnap: any) => {
+        rooms.push({ id: docSnap.id, ...(docSnap.data() as Omit<Room, "id">) });
+      });
+    }
   } catch (error) {
-    console.warn("Firestore read returned error (using real fallback suites):", error);
+    console.warn("Firestore read returned error or timed out (using authoritative suites):", error);
   }
 
-  // If Firestore is empty or contains legacy data lacking complete local images, use the authoritative local image dataset
+  // If Firestore is empty or contains legacy data lacking complete local images, locations, or updated rates, use the authoritative local image dataset
   if (
     rooms.length === 0 ||
     rooms.some(
@@ -56,7 +62,9 @@ export async function getRooms(filters?: RoomFilters): Promise<Room[]> {
         !r.toiletImages ||
         r.toiletImages.length < 2 ||
         !r.washroomImages ||
-        r.washroomImages.length < 1
+        r.washroomImages.length < 1 ||
+        !r.location ||
+        r.pricePerNight < 2000
     )
   ) {
     rooms = [...FALLBACK_ROOMS];

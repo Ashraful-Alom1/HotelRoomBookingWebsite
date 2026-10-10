@@ -15,6 +15,7 @@ import {
   X,
   Loader2,
   Sparkles,
+  MapPin,
 } from "lucide-react";
 
 export default function NewRoomPage() {
@@ -24,11 +25,13 @@ export default function NewRoomPage() {
   const [categoryName, setCategoryName] = useState("Deluxe Suite");
   const [categoryId, setCategoryId] = useState("deluxe");
   const [isAC, setIsAC] = useState(true);
-  const [pricePerNight, setPricePerNight] = useState(180);
+  const [pricePerNight, setPricePerNight] = useState(4500);
   const [bedType, setBedType] = useState("1 King Bed");
   const [roomSize, setRoomSize] = useState("500 sq ft");
   const [maxGuests, setMaxGuests] = useState(2);
   const [inventoryQuantity, setInventoryQuantity] = useState(5);
+  const [location, setLocation] = useState("Marine Drive, Kolatoli, Cox's Bazar");
+  const [googleMapEmbedUrl, setGoogleMapEmbedUrl] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState("");
   const [amenitiesInput, setAmenitiesInput] = useState(
@@ -134,6 +137,12 @@ export default function NewRoomPage() {
         inventoryQuantity: Number(inventoryQuantity),
         shortDescription: shortDescription.trim(),
         description: description.trim(),
+        location: location.trim(),
+        googleMapEmbedUrl:
+          googleMapEmbedUrl.trim() ||
+          (location.trim()
+            ? `https://maps.google.com/maps?q=${encodeURIComponent(location.trim())}&t=&z=14&ie=UTF8&iwloc=&output=embed`
+            : ""),
         amenities,
         policies: [
           "Check-in: 2:00 PM | Check-out: 11:00 AM",
@@ -221,12 +230,17 @@ export default function NewRoomPage() {
               <label className="text-slate-300 font-semibold">Nightly Rate (INR - ₹) *</label>
               <input
                 type="number"
-                min="10"
+                min="1000"
                 required
                 value={pricePerNight}
                 onChange={(e) => setPricePerNight(Number(e.target.value))}
                 className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2.5 text-white"
               />
+              <p className="text-[11px] text-amber-400 font-medium pt-0.5">
+                {isAC
+                  ? "• AC Rate Guideline: ₹4,000 up to ₹12,000 (varies based on room capacity)"
+                  : "• Non-AC Rate Guideline: ₹2,500 up to ₹5,000 (varies based on room capacity)"}
+              </p>
             </div>
 
             <div className="space-y-1">
@@ -234,7 +248,10 @@ export default function NewRoomPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAC(true)}
+                  onClick={() => {
+                    setIsAC(true);
+                    if (pricePerNight < 4000) setPricePerNight(4500);
+                  }}
                   className={`flex-1 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 ${
                     isAC
                       ? "bg-sky-500 text-black border-sky-400"
@@ -245,7 +262,10 @@ export default function NewRoomPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsAC(false)}
+                  onClick={() => {
+                    setIsAC(false);
+                    if (pricePerNight > 5000) setPricePerNight(2800);
+                  }}
                   className={`flex-1 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 ${
                     !isAC
                       ? "bg-emerald-500 text-black border-emerald-400"
@@ -334,6 +354,62 @@ export default function NewRoomPage() {
               onChange={(e) => setAmenitiesInput(e.target.value)}
               className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2.5 text-white"
             />
+          </div>
+
+          {/* Hotel Location & Google Map Configuration */}
+          <div className="pt-4 border-t border-white/10 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#D4AF37]" />
+                Hotel & Room Location Details
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Provide the address or geographical area. Guests will see this location and interactive Google Map.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-slate-300 font-semibold">Hotel Location / Street Address *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Plot 14, Kolatoli Beach Road, Marine Drive, Cox's Bazar"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2.5 text-white"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-slate-300 font-semibold">
+                Google Map Embed URL <span className="text-slate-500 font-normal">(Optional - auto-generated from address if empty)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="https://maps.google.com/maps?q=...&output=embed"
+                value={googleMapEmbedUrl}
+                onChange={(e) => setGoogleMapEmbedUrl(e.target.value)}
+                className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2.5 text-white text-xs font-mono"
+              />
+            </div>
+
+            {/* Map Preview */}
+            {location.trim() && (
+              <div className="rounded-xl overflow-hidden border border-white/15 h-44 bg-slate-900">
+                <iframe
+                  title="Location Preview"
+                  src={
+                    googleMapEmbedUrl.trim() ||
+                    `https://maps.google.com/maps?q=${encodeURIComponent(location.trim())}&t=&z=14&ie=UTF8&iwloc=&output=embed`
+                  }
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  className="w-full h-full opacity-90"
+                />
+              </div>
+            )}
           </div>
         </div>
 

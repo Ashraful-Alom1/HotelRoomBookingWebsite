@@ -17,6 +17,10 @@
     --border-gold: rgba(212, 175, 55, 0.25);
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);

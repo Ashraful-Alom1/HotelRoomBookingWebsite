@@ -37,13 +37,14 @@ export default async function RoomDetailPage({
   const room = await getRoomBySlug(slug);
   const reviews = room ? await getApprovedReviews(room.id) : [];
   const allRooms = await getRooms();
-  const similarRooms = room ? allRooms.filter((r) => r.id !== room.id).slice(0, 3) : [];
+  const otherRooms = room ? allRooms.filter((r) => r.id !== room.id && r.slug !== room.slug) : allRooms;
 
   return (
     <RoomDetailClient
       room={room}
       initialReviews={reviews}
-      similarRooms={similarRooms}
+      similarRooms={otherRooms}
+      allRooms={allRooms}
     />
   );
 }

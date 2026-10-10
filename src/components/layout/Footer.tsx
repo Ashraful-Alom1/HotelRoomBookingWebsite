@@ -132,9 +132,6 @@ export default function Footer() {
             <Link href="/about" className="hover:text-slate-300 transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/admin" className="hover:text-[#D4AF37] transition-colors">
-              Staff Portal
-            </Link>
           </div>
         </div>
       </div>

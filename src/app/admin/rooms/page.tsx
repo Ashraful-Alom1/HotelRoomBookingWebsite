@@ -17,11 +17,29 @@ import {
   XCircle,
   Loader2,
   ExternalLink,
+  MapPin,
 } from "lucide-react";
 
 export default function AdminRoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Edit Room Modal State
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    categoryName: "",
+    pricePerNight: 0,
+    isAC: true,
+    bedType: "",
+    maxGuests: 2,
+    inventoryQuantity: 1,
+    roomSize: "",
+    location: "",
+    shortDescription: "",
+    status: "ACTIVE" as "ACTIVE" | "INACTIVE",
+  });
 
   const loadRooms = async () => {
     try {
@@ -37,6 +55,51 @@ export default function AdminRoomsPage() {
   useEffect(() => {
     loadRooms();
   }, []);
+
+  const handleOpenEdit = (room: Room) => {
+    setEditingRoom(room);
+    setEditForm({
+      name: room.name || "",
+      categoryName: room.categoryName || "",
+      pricePerNight: room.pricePerNight || 0,
+      isAC: !!room.isAC,
+      bedType: room.bedType || "",
+      maxGuests: room.maxGuests || 2,
+      inventoryQuantity: room.inventoryQuantity || 1,
+      roomSize: room.roomSize || "",
+      location: room.location || "",
+      shortDescription: room.shortDescription || "",
+      status: (room.status as "ACTIVE" | "INACTIVE") || "ACTIVE",
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRoom) return;
+    setEditSaving(true);
+    try {
+      await updateRoom(editingRoom.id, {
+        name: editForm.name,
+        categoryName: editForm.categoryName,
+        pricePerNight: Number(editForm.pricePerNight),
+        isAC: editForm.isAC,
+        bedType: editForm.bedType,
+        maxGuests: Number(editForm.maxGuests),
+        inventoryQuantity: Number(editForm.inventoryQuantity),
+        roomSize: editForm.roomSize,
+        location: editForm.location,
+        shortDescription: editForm.shortDescription,
+        status: editForm.status,
+      });
+      setEditingRoom(null);
+      await loadRooms();
+    } catch (err) {
+      console.error("Error updating room:", err);
+      alert("Failed to update room. Please try again.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
@@ -147,6 +210,13 @@ export default function AdminRoomsPage() {
                   <div>Bed: <strong className="text-white">{room.bedType}</strong></div>
                   <div>Rating: <strong className="text-white">{room.averageRating || 5.0}★</strong></div>
                 </div>
+
+                {room.location && (
+                  <p className="text-[11px] text-slate-300 flex items-center gap-1 line-clamp-1 pt-1 border-t border-white/5">
+                    <MapPin className="w-3 h-3 text-[#D4AF37] shrink-0" />
+                    <span className="truncate">{room.location}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -160,17 +230,184 @@ export default function AdminRoomsPage() {
                 <ExternalLink className="w-3.5 h-3.5" /> View Public
               </Link>
 
-              <button
-                onClick={() => handleDelete(room.id, room.name)}
-                className="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-                title="Delete Room"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(room)}
+                  className="px-3 py-1.5 rounded-lg bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#D4AF37] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  title="Edit Room Information"
+                >
+                  <Edit className="w-3.5 h-3.5" /> Edit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDelete(room.id, room.name)}
+                  className="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
+                  title="Delete Room"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Edit Room Modal Dialog */}
+      {editingRoom && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-[#0D121F] border border-white/15 rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-5 text-white">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div>
+                <h3 className="text-xl font-bold text-white">Edit Suite Details</h3>
+                <p className="text-xs text-[#D4AF37]">Updating: {editingRoom.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingRoom(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Room Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Category Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.categoryName}
+                    onChange={(e) => setEditForm({ ...editForm, categoryName: e.target.value })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Price Per Night (₹ INR)</label>
+                  <input
+                    type="number"
+                    required
+                    min={500}
+                    value={editForm.pricePerNight}
+                    onChange={(e) => setEditForm({ ...editForm, pricePerNight: Number(e.target.value) })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Air Conditioning</label>
+                  <select
+                    value={editForm.isAC ? "true" : "false"}
+                    onChange={(e) => setEditForm({ ...editForm, isAC: e.target.value === "true" })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    <option value="true">Air Conditioned (AC)</option>
+                    <option value="false">Non-AC</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Bed Configuration</label>
+                  <input
+                    type="text"
+                    value={editForm.bedType}
+                    onChange={(e) => setEditForm({ ...editForm, bedType: e.target.value })}
+                    placeholder="1 King Bed / 2 Queen Beds"
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Max Guests</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={editForm.maxGuests}
+                    onChange={(e) => setEditForm({ ...editForm, maxGuests: Number(e.target.value) })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Inventory Quantity</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editForm.inventoryQuantity}
+                    onChange={(e) => setEditForm({ ...editForm, inventoryQuantity: Number(e.target.value) })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Room Status</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as "ACTIVE" | "INACTIVE" })}
+                    className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    <option value="ACTIVE">ACTIVE (Available for Booking)</option>
+                    <option value="INACTIVE">INACTIVE (Hidden from Public)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Hotel Location</label>
+                <input
+                  type="text"
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  placeholder="Marine Drive, Kolatoli, Cox's Bazar"
+                  className="w-full bg-[#141A29] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Short Description</label>
+                <textarea
+                  rows={2}
+                  value={editForm.shortDescription}
+                  onChange={(e) => setEditForm({ ...editForm, shortDescription: e.target.value })}
+                  className="w-full bg-[#141A29] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-white/10 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditingRoom(null)}
+                  className="px-5 py-2.5 rounded-xl border border-white/20 text-slate-300 hover:bg-white/10 font-bold text-xs uppercase"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="px-6 py-2.5 rounded-xl gold-gradient-bg text-black font-extrabold text-xs uppercase tracking-wider hover:brightness-110 shadow-lg disabled:opacity-50"
+                >
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

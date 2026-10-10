@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Room } from "@/types";
-import { Clock, Star, Snowflake, Wind } from "lucide-react";
+import { Clock, Star, Snowflake, Wind, MapPin } from "lucide-react";
 import RoomViewModal from "./RoomViewModal";
+import BookingPopupModal from "@/components/booking/BookingPopupModal";
 
 interface RoomCardProps {
   room: Room;
@@ -13,6 +14,7 @@ interface RoomCardProps {
 
 export default function RoomCard({ room, allRooms = [] }: RoomCardProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   // Cover image from public images
   const imageUrl =
@@ -75,25 +77,44 @@ export default function RoomCard({ room, allRooms = [] }: RoomCardProps) {
               ))}
             </div>
 
-            {/* Subtle bed capacity indicator */}
-            <p className="text-xs text-slate-500 pt-1 line-clamp-1 font-medium">
-              {room.bedType} • Max {room.maxGuests} Guests
-            </p>
+            {/* Bed capacity and hotel location indicator */}
+            <div className="space-y-1 pt-1">
+              <p className="text-xs text-slate-500 line-clamp-1 font-medium">
+                {room.bedType} • Max {room.maxGuests} Guests
+              </p>
+              {room.location && (
+                <p className="text-[11px] text-slate-500 line-clamp-1 flex items-center gap-1 font-normal">
+                  <MapPin className="w-3 h-3 text-[#F5A623] shrink-0" />
+                  <span className="truncate">{room.location}</span>
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Bottom Row: Clock + "7 days 6 nights" & Yellow "LEARN MORE" Button (Exact match with screenshot) */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+          {/* Bottom Row: Clock + "7 days 6 nights" & Interactive Action Buttons */}
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>7 days 6 nights</span>
             </div>
 
-            <button
-              onClick={() => setModalOpen(true)}
-              className="bg-[#F5A623] hover:bg-[#e0961b] active:scale-95 text-white font-extrabold text-xs uppercase px-4 py-2 transition-all shadow-sm rounded-none tracking-wider cursor-pointer"
-            >
-              LEARN MORE
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="border border-slate-300 hover:border-slate-800 text-slate-800 hover:bg-slate-50 active:scale-95 font-extrabold text-[11px] uppercase px-3 py-1.5 transition-all shadow-sm rounded-none tracking-wider cursor-pointer"
+              >
+                VIEW DETAILS
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBookingOpen(true)}
+                className="bg-[#F5A623] hover:bg-[#e0961b] active:scale-95 text-slate-950 font-extrabold text-[11px] uppercase px-3.5 py-1.5 transition-all shadow-md rounded-none tracking-wider cursor-pointer"
+              >
+                BOOK NOW
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -103,6 +124,15 @@ export default function RoomCard({ room, allRooms = [] }: RoomCardProps) {
           room={room}
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
+          allRooms={allRooms}
+        />
+      )}
+
+      {bookingOpen && (
+        <BookingPopupModal
+          isOpen={bookingOpen}
+          onClose={() => setBookingOpen(false)}
+          selectedRoom={room}
           allRooms={allRooms}
         />
       )}
