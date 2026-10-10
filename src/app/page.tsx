@@ -225,7 +225,7 @@ export default function HomePage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       {/* 1. HERO SECTION WITH EXACT SCREENSHOT 1 SEARCH ARRANGEMENT */}
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative min-h-[92vh] w-full overflow-hidden flex flex-col justify-center items-center bg-[#0B0D13] py-8 sm:py-14 px-4 sm:px-6">
+      <section className="relative min-h-[75vh] sm:min-h-[92vh] w-full overflow-hidden flex flex-col justify-center items-center bg-[#0B0D13] py-6 sm:py-14 px-4 sm:px-6">
         {/* Background Images with smooth Ken-Burns scale and crossfade transition */}
         {HERO_SLIDES.map((slide, index) => {
           const isActive = currentSlide === index;
@@ -243,11 +243,11 @@ export default function HomePage() {
                 priority={index === 0}
                 unoptimized
                 quality={100}
-                className={`object-cover brightness-[0.4] transition-transform duration-[4500ms] ease-out ${
-                  isActive ? "scale-105" : "scale-100"
+                className={`object-cover object-[center_38%] sm:object-center brightness-[0.45] sm:brightness-[0.4] transition-transform duration-[4500ms] ease-out ${
+                  isActive ? "scale-100 sm:scale-105" : "scale-100"
                 }`}
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black/85" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/30 to-black/85" />
             </div>
           );
         })}

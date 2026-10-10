@@ -338,44 +338,75 @@ export default function RoomDetailClient({
               Every fixture in this suite has been tailored for maximum hygiene and relaxation. Features separate dry and wet zones, custom Italian marble tiling, walk-in rainfall showers, and private Japanese smart bidet toilet amenities.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {room.washroomImages?.[0] && (
+            {/* Facility Images Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {(room.washroomImages || []).map((wImg, idx) => (
                 <div
-                  onClick={() => openLightbox(allImages.findIndex((i) => i.label.includes("Washroom")))}
-                  className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10 cursor-pointer group"
+                  key={`washroom-${idx}`}
+                  onClick={() => openLightbox(allImages.findIndex((i) => i.img.secureUrl === wImg.secureUrl))}
+                  className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 cursor-pointer group bg-slate-950 flex items-center justify-center shadow-lg"
                 >
-                  <Image
-                    src={room.washroomImages[0].secureUrl}
-                    alt="Washroom suite"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute bottom-2 left-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/80 text-white">
-                      Spa Washroom & Bath
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <Image
+                      src={wImg.secureUrl}
+                      alt="Backdrop"
+                      fill
+                      unoptimized
+                      className="object-cover blur-xl opacity-25 scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/30" />
+                  </div>
+                  <div className="relative w-full h-full p-2 flex items-center justify-center z-10">
+                    <Image
+                      src={wImg.secureUrl}
+                      alt={wImg.altText || `Washroom & Bath ${idx + 1}`}
+                      fill
+                      unoptimized
+                      quality={100}
+                      className="object-contain group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="absolute bottom-2 left-2 z-20">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/80 text-white border border-white/10">
+                      Washroom &amp; Bath #{idx + 1}
                     </span>
                   </div>
                 </div>
-              )}
+              ))}
 
-              {room.toiletImages?.[0] && (
+              {(room.toiletImages || []).map((tImg, idx) => (
                 <div
-                  onClick={() => openLightbox(allImages.findIndex((i) => i.label.includes("Toilet")))}
-                  className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10 cursor-pointer group"
+                  key={`toilet-${idx}`}
+                  onClick={() => openLightbox(allImages.findIndex((i) => i.img.secureUrl === tImg.secureUrl))}
+                  className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 cursor-pointer group bg-slate-950 flex items-center justify-center shadow-lg"
                 >
-                  <Image
-                    src={room.toiletImages[0].secureUrl}
-                    alt="Toilet facility"
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute bottom-2 left-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/80 text-white">
-                      Sanitized Toilet Suite
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <Image
+                      src={tImg.secureUrl}
+                      alt="Backdrop"
+                      fill
+                      unoptimized
+                      className="object-cover blur-xl opacity-25 scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/30" />
+                  </div>
+                  <div className="relative w-full h-full p-2 flex items-center justify-center z-10">
+                    <Image
+                      src={tImg.secureUrl}
+                      alt={tImg.altText || `Toilet Facility ${idx + 1}`}
+                      fill
+                      unoptimized
+                      quality={100}
+                      className="object-contain group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="absolute bottom-2 left-2 z-20">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/80 text-white border border-white/10">
+                      Toilet Facility #{idx + 1}
                     </span>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
 

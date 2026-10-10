@@ -15,6 +15,30 @@ import { Room } from "@/types";
 import { INITIAL_ROOMS_DATA } from "./seedService";
 
 const ROOMS_COLLECTION = "rooms";
+const LOCAL_STORAGE_KEY = "GRAND_HORIZON_ROOMS_CATALOG_V2";
+
+function getStoredRooms(): Room[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("Error reading rooms from localStorage:", e);
+  }
+  return null;
+}
+
+function persistStoredRooms(rooms: Room[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(rooms));
+  } catch (e) {
+    console.warn("Error saving rooms to localStorage:", e);
+  }
+}
 
 // In-memory initial rooms cache with IDs
 export let FALLBACK_ROOMS: Room[] = INITIAL_ROOMS_DATA.map((r, i) => ({
@@ -40,7 +64,7 @@ export async function getRooms(filters?: RoomFilters): Promise<Room[]> {
     const roomsRef = collection(db, ROOMS_COLLECTION);
     const fetchPromise = getDocs(roomsRef);
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Firestore timeout")), 1500)
+      setTimeout(() => reject(new Error("Firestore timeout")), 4000)
     );
     const snapshot = (await Promise.race([fetchPromise, timeoutPromise])) as any;
 
@@ -50,26 +74,26 @@ export async function getRooms(filters?: RoomFilters): Promise<Room[]> {
       });
     }
   } catch (error) {
-    console.warn("Firestore read returned error or timed out (using authoritative suites):", error);
+    console.warn("Firestore read returned error or timed out:", error);
   }
 
-  // If Firestore is empty or contains legacy data lacking complete local images, locations, or updated rates, use the authoritative local image dataset
-  if (
-    rooms.length === 0 ||
-    rooms.some(
-      (r) =>
-        !r.gallery ||
-        r.gallery.length < 3 ||
-        !r.toiletImages ||
-        r.toiletImages.length < 2 ||
-        !r.washroomImages ||
-        r.washroomImages.length < 1 ||
-        !r.location ||
-        r.pricePerNight < 2000
-    )
-  ) {
-    rooms = [...FALLBACK_ROOMS];
+  // If Firestore returned rooms, save to localStorage and update in-memory cache
+  if (rooms.length > 0) {
+    FALLBACK_ROOMS = rooms;
+    persistStoredRooms(rooms);
+  } else {
+    // If Firestore has no documents yet or threw permission error, read from localStorage
+    const stored = getStoredRooms();
+    if (stored && stored.length > 0) {
+      rooms = stored;
+      FALLBACK_ROOMS = stored;
+    } else {
+      // Default to initial curated suites and save to localStorage
+      rooms = [...FALLBACK_ROOMS];
+      persistStoredRooms(rooms);
+    }
   }
+
 
   // Dynamic filtering
   if (filters) {
@@ -151,19 +175,9 @@ export async function getRoomById(id: string): Promise<Room | null> {
 }
 
 export async function createRoom(roomData: Omit<Room, "id" | "createdAt" | "updatedAt">): Promise<string> {
-  const roomsRef = collection(db, ROOMS_COLLECTION);
   const now = new Date().toISOString();
-  let newId = `room-${Date.now()}`;
-  try {
-    const docRef = await addDoc(roomsRef, {
-      ...roomData,
-      createdAt: now,
-      updatedAt: now,
-    });
-    newId = docRef.id;
-  } catch (error) {
-    console.warn("Firestore addDoc error (saving to local cache):", error);
-  }
+  const slug = roomData.slug || `suite-${Date.now()}`;
+  const newId = slug.startsWith("suite-") ? slug : `suite-${slug}`;
 
   const newRoom: Room = {
     ...roomData,
@@ -171,13 +185,34 @@ export async function createRoom(roomData: Omit<Room, "id" | "createdAt" | "upda
     createdAt: now,
     updatedAt: now,
   };
-  FALLBACK_ROOMS = [newRoom, ...FALLBACK_ROOMS];
+
+  // 1. Immediately save to in-memory cache and localStorage so it's instantly available client-side & admin-side
+  FALLBACK_ROOMS = [newRoom, ...FALLBACK_ROOMS.filter((r) => r.id !== newId)];
+  persistStoredRooms(FALLBACK_ROOMS);
+
+  // 2. Attempt Firestore Cloud write
+  try {
+    const docRef = doc(db, ROOMS_COLLECTION, newId);
+    await setDoc(docRef, {
+      ...roomData,
+      id: newId,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (error: any) {
+    console.warn("Firestore setDoc write warning:", error?.code, error?.message);
+    if (error?.code === "permission-denied") {
+      console.warn("Firestore Security Rules blocked write. Please update Firebase Console Rules to 'allow read, write: if true;'. Suite was saved locally in your browser.");
+    }
+  }
+
   return newId;
 }
 
 export async function updateRoom(id: string, roomData: Partial<Room>): Promise<void> {
   const now = new Date().toISOString();
-  // Update in-memory fallback list
+  
+  // 1. Update in-memory fallback list and localStorage
   const idx = FALLBACK_ROOMS.findIndex((r) => r.id === id || r.slug === id);
   if (idx !== -1) {
     FALLBACK_ROOMS[idx] = {
@@ -186,7 +221,9 @@ export async function updateRoom(id: string, roomData: Partial<Room>): Promise<v
       updatedAt: now,
     };
   }
+  persistStoredRooms(FALLBACK_ROOMS);
 
+  // 2. Attempt Firestore Cloud write
   try {
     const docRef = doc(db, ROOMS_COLLECTION, id);
     await setDoc(
@@ -197,13 +234,15 @@ export async function updateRoom(id: string, roomData: Partial<Room>): Promise<v
       },
       { merge: true }
     );
-  } catch (error) {
-    console.warn("Firestore setDoc error (saved to local fallback):", error);
+  } catch (error: any) {
+    console.warn("Firestore setDoc update warning:", error?.code, error?.message);
   }
 }
 
 export async function deleteRoom(id: string): Promise<void> {
   FALLBACK_ROOMS = FALLBACK_ROOMS.filter((r) => r.id !== id && r.slug !== id);
+  persistStoredRooms(FALLBACK_ROOMS);
+
   try {
     const docRef = doc(db, ROOMS_COLLECTION, id);
     await deleteDoc(docRef);

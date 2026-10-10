@@ -73,24 +73,26 @@ export default function RoomViewModal({
   // Prepare images strictly matching structure:
   // 3 room view images, 2 toilet images, 1 washroom image
   const roomImages =
-    currentRoom.gallery && currentRoom.gallery.length >= 3
-      ? currentRoom.gallery.slice(0, 3)
+    currentRoom.gallery && currentRoom.gallery.length > 0
+      ? [
+          ...(currentRoom.coverImage ? [currentRoom.coverImage] : []),
+          ...currentRoom.gallery,
+        ]
       : [
           currentRoom.coverImage || { secureUrl: "/images/rooms/images (1).jpg", altText: "Room View 1" },
-          ...(currentRoom.gallery || []),
-        ].slice(0, 3);
+        ];
 
   const toiletImages =
-    currentRoom.toiletImages && currentRoom.toiletImages.length >= 2
-      ? currentRoom.toiletImages.slice(0, 2)
+    currentRoom.toiletImages && currentRoom.toiletImages.length > 0
+      ? currentRoom.toiletImages
       : [
           { secureUrl: "/images/toilets/Toilet.jpg", altText: "Toilet View 1" },
           { secureUrl: "/images/toilets/Toilet2.jpg", altText: "Toilet View 2" },
         ];
 
   const washroomImages =
-    currentRoom.washroomImages && currentRoom.washroomImages.length >= 1
-      ? currentRoom.washroomImages.slice(0, 1)
+    currentRoom.washroomImages && currentRoom.washroomImages.length > 0
+      ? currentRoom.washroomImages
       : [
           { secureUrl: "/images/washrooms/Washroom.jpg", altText: "Washroom View 1" },
         ];
@@ -200,63 +202,78 @@ export default function RoomViewModal({
           </div>
 
           {/* Modal Body - Scrollable */}
-          <div ref={modalBodyRef} className="overflow-y-auto p-6 space-y-6">
+          <div ref={modalBodyRef} className="overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Gallery Category Navigation Tabs */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
               <button
                 onClick={() => handleCategoryChange("ROOM")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   activeCategory === "ROOM"
                     ? "bg-[#F5A623] text-black shadow-md"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <Layers className="w-4 h-4" />
-                Room Views (3 Images)
+                Room Views ({roomImages.length} Photos)
               </button>
 
               <button
                 onClick={() => handleCategoryChange("TOILET")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   activeCategory === "TOILET"
                     ? "bg-[#F5A623] text-black shadow-md"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
-                Toilet Views (2 Images)
+                Toilet Views ({toiletImages.length} Photos)
               </button>
 
               <button
                 onClick={() => handleCategoryChange("WASHROOM")}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                   activeCategory === "WASHROOM"
                     ? "bg-[#F5A623] text-black shadow-md"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 <Bath className="w-4 h-4" />
-                Washroom Views (1 Image)
+                Washroom Views ({washroomImages.length} Photos)
               </button>
             </div>
 
-            {/* Featured Photo Viewer Stage */}
-            <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full bg-slate-900 rounded-xl overflow-hidden group shadow-inner">
-              <Image
-                src={currentImageUrl}
-                alt={currentImageAlt}
-                fill
-                unoptimized
-                quality={100}
-                className="object-cover"
-              />
+            {/* Featured Photo Viewer Stage - Completely Placed, No Cut-Off, Crystal Clear */}
+            <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] md:aspect-[16/9] max-h-[460px] bg-slate-950 rounded-2xl overflow-hidden group shadow-2xl flex items-center justify-center border border-slate-800">
+              {/* Ambient blurred backdrop fills the container harmoniously without ugly black bars */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <Image
+                  src={currentImageUrl}
+                  alt="Backdrop blur"
+                  fill
+                  unoptimized
+                  className="object-cover blur-2xl opacity-25 scale-110"
+                />
+                <div className="absolute inset-0 bg-black/40" />
+              </div>
+
+              {/* Main crisp uncropped image: object-contain guarantees 100% full view with no cut-off */}
+              <div className="relative w-full h-full p-2 sm:p-4 flex items-center justify-center z-10">
+                <Image
+                  src={currentImageUrl}
+                  alt={currentImageAlt}
+                  fill
+                  unoptimized
+                  quality={100}
+                  className="object-contain drop-shadow-2xl"
+                />
+              </div>
 
               {/* Slider Arrows */}
               {currentCategoryImages.length > 1 && (
                 <>
                   <button
                     onClick={handlePrevImage}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-[#F5A623] text-white hover:text-black transition-all cursor-pointer z-10"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/75 hover:bg-[#F5A623] text-white hover:text-black transition-all cursor-pointer z-20 shadow-lg"
                     aria-label="Previous image"
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -264,7 +281,7 @@ export default function RoomViewModal({
 
                   <button
                     onClick={handleNextImage}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-[#F5A623] text-white hover:text-black transition-all cursor-pointer z-10"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/75 hover:bg-[#F5A623] text-white hover:text-black transition-all cursor-pointer z-20 shadow-lg"
                     aria-label="Next image"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -273,12 +290,12 @@ export default function RoomViewModal({
               )}
 
               {/* Counter Pill */}
-              <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-bold">
+              <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-bold z-20 border border-white/10">
                 {selectedImageIndex + 1} / {currentCategoryImages.length}
               </div>
 
               {/* Caption */}
-              <div className="absolute bottom-3 left-3 bg-black/75 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full">
+              <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full z-20 border border-white/10 font-medium max-w-[70%] truncate">
                 {currentImageAlt}
               </div>
             </div>
