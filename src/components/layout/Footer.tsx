@@ -1,10 +1,45 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles, Phone, Mail, MapPin, MessageSquare, Shield, Clock } from "lucide-react";
+import { getHotelSettings, DEFAULT_HOTEL_SETTINGS } from "@/services/settingsService";
+import { HotelSettings } from "@/types";
 
 export default function Footer() {
-  const whatsappNumber = process.env.NEXT_PUBLIC_HOTEL_WHATSAPP || "+8801833075594";
-  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, "");
+  const [settings, setSettings] = useState<HotelSettings>(DEFAULT_HOTEL_SETTINGS);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const syncSettings = async () => {
+      try {
+        const data = await getHotelSettings();
+        if (mounted && data) {
+          setSettings(data);
+        }
+      } catch (err) {
+        console.warn("Could not load hotel settings for footer:", err);
+      }
+    };
+
+    syncSettings();
+
+    const handleUpdate = () => {
+      syncSettings();
+    };
+
+    window.addEventListener("hotel-settings-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("hotel-settings-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  const cleanPhone = (settings.whatsappNumber || "").replace(/[^0-9]/g, "");
 
   return (
     <footer className="bg-[#080B12] border-t border-white/10 text-slate-400 pt-16 pb-12">
@@ -17,22 +52,24 @@ export default function Footer() {
                 <Sparkles className="w-4 h-4 text-black" />
               </div>
               <span className="text-lg font-bold tracking-widest text-white uppercase">
-                Grand Horizon
+                {settings.hotelName || "Grand Horizon"}
               </span>
             </div>
             <p className="text-sm leading-relaxed text-slate-400">
-              An iconic coastal retreat delivering exceptional hospitality, refined architectural luxury, and private sanctuary accommodations.
+              {settings.description || "An iconic coastal retreat delivering exceptional hospitality, refined architectural luxury, and private sanctuary accommodations."}
             </p>
-            <div className="pt-2">
-              <a
-                href={`https://wa.me/${cleanPhone}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 transition-all text-sm font-semibold"
-              >
-                <MessageSquare className="w-4 h-4 text-emerald-400" /> WhatsApp Concierge
-              </a>
-            </div>
+            {cleanPhone && (
+              <div className="pt-2">
+                <a
+                  href={`https://wa.me/${cleanPhone}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 transition-all text-sm font-semibold"
+                >
+                  <MessageSquare className="w-4 h-4 text-emerald-400" /> WhatsApp Concierge
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Column 2: Quick Links */}
@@ -76,12 +113,14 @@ export default function Footer() {
             </h3>
             <ul className="space-y-2.5 text-sm">
               <li className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#D4AF37]" />
-                <span>Check-in: 2:00 PM | Out: 11:00 AM</span>
+                <Clock className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                <span>
+                  Check-in: {settings.checkInTime || "2:00 PM"} | Out: {settings.checkOutTime || "11:00 AM"}
+                </span>
               </li>
               <li className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#D4AF37]" />
-                <span>Free 48h Cancellation Policy</span>
+                <Shield className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                <span>{settings.cancellationPolicy || "Free 48h Cancellation Policy"}</span>
               </li>
               <li>
                 <Link href="/reviews" className="hover:text-[#D4AF37] transition-colors">
@@ -102,29 +141,37 @@ export default function Footer() {
               Direct Contact
             </h3>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-2.5">
-                <MapPin className="w-5 h-5 text-[#D4AF37] shrink-0 mt-0.5" />
-                <span>Marine Drive Road, Cox&apos;s Bazar 4700, Bangladesh</span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 text-[#F5A623] shrink-0" />
-                <a href="tel:8822308551" className="hover:text-white transition-colors">
-                  +91 8822308551 / +00 987-654-321
-                </a>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-[#F5A623] shrink-0" />
-                <a href="mailto:booking@resorthotel.com" className="hover:text-white transition-colors">
-                  booking@resorthotel.com
-                </a>
-              </li>
+              {settings.address && (
+                <li className="flex items-start gap-2.5">
+                  <MapPin className="w-5 h-5 text-[#D4AF37] shrink-0 mt-0.5" />
+                  <span>{settings.address}</span>
+                </li>
+              )}
+              {settings.phone && (
+                <li className="flex items-center gap-2.5">
+                  <Phone className="w-4 h-4 text-[#F5A623] shrink-0" />
+                  <a href={`tel:${settings.phone.replace(/[^0-9+]/g, "")}`} className="hover:text-white transition-colors">
+                    {settings.phone}
+                  </a>
+                </li>
+              )}
+              {settings.email && (
+                <li className="flex items-center gap-2.5">
+                  <Mail className="w-4 h-4 text-[#F5A623] shrink-0" />
+                  <a href={`mailto:${settings.email}`} className="hover:text-white transition-colors">
+                    {settings.email}
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
         <div className="pt-8 mt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} Grand Horizon Luxury Suites. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} {settings.copyrightText || `${settings.hotelName || "Grand Horizon"}. All rights reserved.`}
+          </p>
           <div className="flex gap-6">
             <Link href="/about" className="hover:text-slate-300 transition-colors">
               Terms & Conditions

@@ -150,6 +150,7 @@ export interface HotelSettings {
   currency: string;
   timezone: string;
   taxRatePercent: number;
+  copyrightText?: string;
   updatedAt: string;
 }
 

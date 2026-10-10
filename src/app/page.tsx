@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getRooms, FALLBACK_ROOMS } from "@/services/roomsService";
-import { Room } from "@/types";
+import { getHotelSettings, DEFAULT_HOTEL_SETTINGS } from "@/services/settingsService";
+import { Room, HotelSettings } from "@/types";
 import RoomCard from "@/components/room/RoomCard";
 import BookingPopupModal from "@/components/booking/BookingPopupModal";
 import GuestsRoomsModal, { RoomConfig } from "@/components/booking/GuestsRoomsModal";
@@ -71,9 +72,22 @@ const HERO_SLIDES = [
 ];
 
 export default function HomePage() {
-  // Initialize with FALLBACK_ROOMS so rooms are 100% visible immediately without loading freeze
+  const [settings, setSettings] = useState<HotelSettings>(DEFAULT_HOTEL_SETTINGS);
   const [rooms, setRooms] = useState<Room[]>(FALLBACK_ROOMS);
   const [loading, setLoading] = useState(false);
+
+  // Dynamic Hero Slides from live rooms catalog
+  const heroSlides =
+    rooms.length > 0
+      ? rooms.slice(0, 6).map((r) => ({
+          image: r.coverImage?.secureUrl || "/images/rooms/deluxe_bedroom.jpg",
+          title: "Enjoy A Luxury Experience",
+          subtitle:
+            r.shortDescription ||
+            r.description ||
+            `${r.name} - ${r.isAC ? "Air Conditioned" : "Non-AC"} Comfort`,
+        }))
+      : HERO_SLIDES;
 
   // Hero Slider State
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -104,35 +118,57 @@ export default function HomePage() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     async function loadData() {
       try {
-        const data = await getRooms();
-        if (data && data.length > 0) {
-          setRooms(data);
+        const [roomsData, settingsData] = await Promise.all([
+          getRooms(),
+          getHotelSettings(),
+        ]);
+        if (mounted) {
+          if (roomsData && roomsData.length > 0) {
+            setRooms(roomsData);
+          }
+          if (settingsData) {
+            setSettings(settingsData);
+          }
         }
       } catch (err) {
-        console.error("Failed to load rooms, retaining fallback suites:", err);
+        console.error("Failed to load rooms & settings from Firestore:", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     loadData();
+
+    const handleUpdate = () => {
+      getHotelSettings().then((s) => mounted && setSettings(s)).catch(() => {});
+      getRooms().then((r) => mounted && setRooms(r)).catch(() => {});
+    };
+    window.addEventListener("hotel-settings-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("hotel-settings-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
 
   // Automatic hero slider cycle every 4.5 seconds in continuous loop
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 4500);
     return () => clearInterval(timer);
-  }, [currentSlide]);
+  }, [currentSlide, heroSlides.length]);
 
   const handlePrevSlide = () => {
-    setCurrentSlide((prev) => (prev === 0 ? HERO_SLIDES.length - 1 : prev - 1));
+    setCurrentSlide((prev) => (prev === 0 ? heroSlides.length - 1 : prev - 1));
   };
 
   const handleNextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
   };
 
   const handleNearMe = () => {
@@ -227,7 +263,7 @@ export default function HomePage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="relative min-h-[75vh] sm:min-h-[92vh] w-full overflow-hidden flex flex-col justify-center items-center bg-[#0B0D13] py-6 sm:py-14 px-4 sm:px-6">
         {/* Background Images with smooth Ken-Burns scale and crossfade transition */}
-        {HERO_SLIDES.map((slide, index) => {
+        {heroSlides.map((slide, index) => {
           const isActive = currentSlide === index;
           return (
             <div
@@ -295,7 +331,7 @@ export default function HomePage() {
 
         {/* Slide Indicators: Real-time animated transformation dots */}
         <div className="relative z-20 flex items-center gap-2 pt-1 pb-1">
-          {HERO_SLIDES.map((_, idx) => (
+          {heroSlides.map((_, idx) => (
             <button
               key={idx}
               type="button"
@@ -538,12 +574,12 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Visual Collage using uploaded images in full HD */}
+            {/* Visual Collage using live suite photos */}
             <div className="grid grid-cols-2 gap-4">
               <div className="relative aspect-[4/5] rounded-xl overflow-hidden shadow-lg border border-slate-200">
                 <Image
-                  src="/images/rooms/embracing-opulence-in-a-hotel-room-with-a-large-window-generative-ai-photo.jpg"
-                  alt="Luxury Hotel Room with View"
+                  src={rooms[0]?.coverImage?.secureUrl || "/images/rooms/deluxe_bedroom.jpg"}
+                  alt={rooms[0]?.name || "Luxury Suite"}
                   fill
                   unoptimized
                   quality={100}
@@ -552,8 +588,8 @@ export default function HomePage() {
               </div>
               <div className="relative aspect-[4/5] rounded-xl overflow-hidden shadow-lg border border-slate-200 mt-8">
                 <Image
-                  src="/images/rooms/deluxe_bedroom.jpg"
-                  alt="Deluxe Executive Bedroom"
+                  src={rooms[1]?.coverImage?.secureUrl || "/images/rooms/family_villa.jpg"}
+                  alt={rooms[1]?.name || "Executive Suite"}
                   fill
                   unoptimized
                   quality={100}
@@ -614,16 +650,18 @@ export default function HomePage() {
       </section>
 
       {/* Floating WhatsApp Quick Booking Button */}
-      <aside aria-label="WhatsApp quick chat" className="fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => handleOpenBookingPopup(null)}
-          className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-full shadow-2xl shadow-black hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        >
-          <MessageSquare className="w-5 h-5" />
-          <span className="hidden sm:inline">WhatsApp 8822308551</span>
-        </button>
-      </aside>
+      {settings.whatsappNumber && (
+        <aside aria-label="WhatsApp quick chat" className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => handleOpenBookingPopup(null)}
+            className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-full shadow-2xl shadow-black hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <MessageSquare className="w-5 h-5" />
+            <span className="hidden sm:inline">WhatsApp Concierge</span>
+          </button>
+        </aside>
+      )}
 
       {/* Search & Booking Box Modal (Opens when clicking BOOK NOW in Hero) */}
       {searchModalOpen && (

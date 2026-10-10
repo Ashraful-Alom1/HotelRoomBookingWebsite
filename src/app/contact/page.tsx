@@ -1,14 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Phone, Mail, MapPin, MessageSquare, Clock, CheckCircle2, Send } from "lucide-react";
+import { getHotelSettings, DEFAULT_HOTEL_SETTINGS } from "@/services/settingsService";
+import { HotelSettings } from "@/types";
 
 export default function ContactPage() {
+  const [settings, setSettings] = useState<HotelSettings>(DEFAULT_HOTEL_SETTINGS);
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", message: "" });
 
-  const whatsappPhone = process.env.NEXT_PUBLIC_HOTEL_WHATSAPP || "+8801833075594";
-  const cleanPhone = whatsappPhone.replace(/[^0-9]/g, "");
+  useEffect(() => {
+    let mounted = true;
+    getHotelSettings().then((data) => {
+      if (mounted && data) setSettings(data);
+    }).catch(() => {});
+
+    const handleUpdate = () => {
+      getHotelSettings().then((data) => {
+        if (mounted && data) setSettings(data);
+      }).catch(() => {});
+    };
+
+    window.addEventListener("hotel-settings-updated", handleUpdate);
+    return () => {
+      mounted = false;
+      window.removeEventListener("hotel-settings-updated", handleUpdate);
+    };
+  }, []);
+
+  const cleanPhone = (settings.whatsappNumber || "").replace(/[^0-9]/g, "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +44,7 @@ export default function ContactPage() {
         </span>
         <h1 className="text-3xl sm:text-5xl font-extrabold text-white">Contact & Concierge Desk</h1>
         <p className="text-sm text-slate-400 max-w-xl mx-auto">
-          We are available 24 hours a day to assist with your bookings, itinerary planning, or custom group reservations.
+          We are available 24 hours a day to assist with your bookings, itinerary planning, or custom reservations.
         </p>
       </div>
 
@@ -41,7 +62,7 @@ export default function ContactPage() {
                 <div>
                   <h3 className="font-bold text-white">Resort Location</h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Marine Drive Road, Cox&apos;s Bazar 4700, Bangladesh
+                    {settings.address || "Marine Drive Road, Cox's Bazar 4700, Bangladesh"}
                   </p>
                 </div>
               </div>
@@ -52,7 +73,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-white">Telephone Concierge</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">+880 1833-075594 (24/7 Front Desk)</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{settings.phone || "24/7 Front Desk"}</p>
                 </div>
               </div>
 
@@ -63,7 +84,7 @@ export default function ContactPage() {
                 <div>
                   <h3 className="font-bold text-white">Email Enquiries</h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    reservations@grandhorizonhotel.com
+                    {settings.email || "reservations@grandhorizon.com"}
                   </p>
                 </div>
               </div>
@@ -77,14 +98,16 @@ export default function ContactPage() {
             <p className="text-xs text-slate-300">
               For immediate room reservations or quick queries, connect directly with our front desk team.
             </p>
-            <a
-              href={`https://wa.me/${cleanPhone}?text=Hello%20Grand%20Horizon%2C%20I%20would%20like%20to%20connect%20with%20the%20concierge`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md"
-            >
-              Start WhatsApp Conversation
-            </a>
+            {cleanPhone && (
+              <a
+                href={`https://wa.me/${cleanPhone}?text=Hello%20${encodeURIComponent(settings.hotelName || "Grand Horizon")}%2C%20I%20would%20like%20to%20connect%20with%20the%20concierge`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md"
+              >
+                Start WhatsApp Conversation
+              </a>
+            )}
           </div>
         </div>
 
