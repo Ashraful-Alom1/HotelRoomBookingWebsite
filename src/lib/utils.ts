@@ -31,3 +31,26 @@ export function calculateNights(checkIn: string, checkOut: string): number {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays > 0 ? diffDays : 0;
 }
+
+export function getTodayDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getTomorrowDateString(baseDate?: string): string {
+  const base = baseDate ? new Date(baseDate) : new Date();
+  const next = new Date(base.getTime() + 24 * 60 * 60 * 1000);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, "0");
+  const day = String(next.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function isPastDate(dateString: string): boolean {
+  if (!dateString) return false;
+  return dateString < getTodayDateString();
+}
+

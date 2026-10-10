@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Room } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import { formatCurrency, calculateNights } from "@/lib/utils";
+import { formatCurrency, calculateNights, getTodayDateString, getTomorrowDateString, isPastDate } from "@/lib/utils";
 import { X, Calendar, CheckCircle2, MessageSquare, Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 
 interface BookingModalProps {
@@ -25,15 +25,15 @@ export default function BookingModal({
 }: BookingModalProps) {
   const { user, profile } = useAuth();
 
-  const [checkIn, setCheckIn] = useState(
-    initialCheckIn || new Date().toISOString().split("T")[0]
-  );
-  // Default checkout is tomorrow
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const [checkOut, setCheckOut] = useState(
-    initialCheckOut || tomorrow.toISOString().split("T")[0]
-  );
+  const todayStr = getTodayDateString();
+  const validInitialCheckIn = initialCheckIn && !isPastDate(initialCheckIn) ? initialCheckIn : todayStr;
+  const validInitialCheckOut =
+    initialCheckOut && initialCheckOut > validInitialCheckIn
+      ? initialCheckOut
+      : getTomorrowDateString(validInitialCheckIn);
+
+  const [checkIn, setCheckIn] = useState(validInitialCheckIn);
+  const [checkOut, setCheckOut] = useState(validInitialCheckOut);
   const [guests, setGuests] = useState(initialGuests);
   const [roomQuantity, setRoomQuantity] = useState(1);
   const [fullName, setFullName] = useState(profile?.fullName || user?.displayName || "");
@@ -217,8 +217,18 @@ export default function BookingModal({
                 <input
                   type="date"
                   value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    if (!chosen || isPastDate(chosen)) {
+                      setCheckIn(getTodayDateString());
+                    } else {
+                      setCheckIn(chosen);
+                      if (checkOut <= chosen) {
+                        setCheckOut(getTomorrowDateString(chosen));
+                      }
+                    }
+                  }}
+                  min={getTodayDateString()}
                   required
                   className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#D4AF37]"
                 />
@@ -229,8 +239,15 @@ export default function BookingModal({
                 <input
                   type="date"
                   value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  min={checkIn}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    if (!chosen || chosen <= checkIn) {
+                      setCheckOut(getTomorrowDateString(checkIn));
+                    } else {
+                      setCheckOut(chosen);
+                    }
+                  }}
+                  min={getTomorrowDateString(checkIn)}
                   required
                   className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#D4AF37]"
                 />

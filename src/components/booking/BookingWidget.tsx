@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Room } from "@/types";
-import { formatCurrency, calculateNights } from "@/lib/utils";
+import { formatCurrency, calculateNights, getTodayDateString, getTomorrowDateString, isPastDate } from "@/lib/utils";
 import BookingModal from "./BookingModal";
 import { Calendar, Users, ShieldCheck, CheckCircle2, AlertTriangle, Sparkles, MessageSquare } from "lucide-react";
 import { checkRoomAvailability } from "@/services/bookingsService";
@@ -12,10 +12,8 @@ interface BookingWidgetProps {
 }
 
 export default function BookingWidget({ room }: BookingWidgetProps) {
-  const [checkIn, setCheckIn] = useState(new Date().toISOString().split("T")[0]);
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const [checkOut, setCheckOut] = useState(tomorrow.toISOString().split("T")[0]);
+  const [checkIn, setCheckIn] = useState(() => getTodayDateString());
+  const [checkOut, setCheckOut] = useState(() => getTomorrowDateString());
   const [guests, setGuests] = useState(2);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -104,8 +102,18 @@ export default function BookingWidget({ room }: BookingWidgetProps) {
               <input
                 type="date"
                 value={checkIn}
-                min={new Date().toISOString().split("T")[0]}
-                onChange={(e) => setCheckIn(e.target.value)}
+                min={getTodayDateString()}
+                onChange={(e) => {
+                  const chosen = e.target.value;
+                  if (!chosen || isPastDate(chosen)) {
+                    setCheckIn(getTodayDateString());
+                  } else {
+                    setCheckIn(chosen);
+                    if (checkOut <= chosen) {
+                      setCheckOut(getTomorrowDateString(chosen));
+                    }
+                  }
+                }}
                 className="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
               />
             </div>
@@ -117,8 +125,15 @@ export default function BookingWidget({ room }: BookingWidgetProps) {
               <input
                 type="date"
                 value={checkOut}
-                min={checkIn}
-                onChange={(e) => setCheckOut(e.target.value)}
+                min={getTomorrowDateString(checkIn)}
+                onChange={(e) => {
+                  const chosen = e.target.value;
+                  if (!chosen || chosen <= checkIn) {
+                    setCheckOut(getTomorrowDateString(checkIn));
+                  } else {
+                    setCheckOut(chosen);
+                  }
+                }}
                 className="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
               />
             </div>

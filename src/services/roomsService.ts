@@ -4,6 +4,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -16,7 +17,7 @@ import { INITIAL_ROOMS_DATA } from "./seedService";
 const ROOMS_COLLECTION = "rooms";
 
 // In-memory initial rooms cache with IDs
-export const FALLBACK_ROOMS: Room[] = INITIAL_ROOMS_DATA.map((r, i) => ({
+export let FALLBACK_ROOMS: Room[] = INITIAL_ROOMS_DATA.map((r, i) => ({
   ...r,
   id: `suite-${r.slug}`,
   createdAt: new Date().toISOString(),
@@ -152,23 +153,62 @@ export async function getRoomById(id: string): Promise<Room | null> {
 export async function createRoom(roomData: Omit<Room, "id" | "createdAt" | "updatedAt">): Promise<string> {
   const roomsRef = collection(db, ROOMS_COLLECTION);
   const now = new Date().toISOString();
-  const docRef = await addDoc(roomsRef, {
+  let newId = `room-${Date.now()}`;
+  try {
+    const docRef = await addDoc(roomsRef, {
+      ...roomData,
+      createdAt: now,
+      updatedAt: now,
+    });
+    newId = docRef.id;
+  } catch (error) {
+    console.warn("Firestore addDoc error (saving to local cache):", error);
+  }
+
+  const newRoom: Room = {
     ...roomData,
+    id: newId,
     createdAt: now,
     updatedAt: now,
-  });
-  return docRef.id;
+  };
+  FALLBACK_ROOMS = [newRoom, ...FALLBACK_ROOMS];
+  return newId;
 }
 
 export async function updateRoom(id: string, roomData: Partial<Room>): Promise<void> {
-  const docRef = doc(db, ROOMS_COLLECTION, id);
-  await updateDoc(docRef, {
-    ...roomData,
-    updatedAt: new Date().toISOString(),
-  });
+  const now = new Date().toISOString();
+  // Update in-memory fallback list
+  const idx = FALLBACK_ROOMS.findIndex((r) => r.id === id || r.slug === id);
+  if (idx !== -1) {
+    FALLBACK_ROOMS[idx] = {
+      ...FALLBACK_ROOMS[idx],
+      ...roomData,
+      updatedAt: now,
+    };
+  }
+
+  try {
+    const docRef = doc(db, ROOMS_COLLECTION, id);
+    await setDoc(
+      docRef,
+      {
+        ...roomData,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn("Firestore setDoc error (saved to local fallback):", error);
+  }
 }
 
 export async function deleteRoom(id: string): Promise<void> {
-  const docRef = doc(db, ROOMS_COLLECTION, id);
-  await deleteDoc(docRef);
+  FALLBACK_ROOMS = FALLBACK_ROOMS.filter((r) => r.id !== id && r.slug !== id);
+  try {
+    const docRef = doc(db, ROOMS_COLLECTION, id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.warn("Firestore deleteDoc error:", error);
+  }
 }
+

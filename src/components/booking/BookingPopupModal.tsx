@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Room } from "@/types";
-import { formatCurrency, calculateNights } from "@/lib/utils";
+import { formatCurrency, calculateNights, getTodayDateString, isPastDate } from "@/lib/utils";
 import {
   X,
   Calendar,
@@ -46,9 +46,7 @@ export default function BookingPopupModal({
   const [bedCapacity, setBedCapacity] = useState(
     activeRoom?.bedType || "1 King Bed"
   );
-  const [checkInDate, setCheckInDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [checkInDate, setCheckInDate] = useState(() => getTodayDateString());
   const [stayDuration, setStayDuration] = useState("2"); // nights
   const [checkInTime, setCheckInTime] = useState("12:00 PM");
   const [guestCount, setGuestCount] = useState("2");
@@ -324,8 +322,15 @@ export default function BookingPopupModal({
                 <input
                   type="date"
                   value={checkInDate}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setCheckInDate(e.target.value)}
+                  min={getTodayDateString()}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    if (!chosen || isPastDate(chosen)) {
+                      setCheckInDate(getTodayDateString());
+                    } else {
+                      setCheckInDate(chosen);
+                    }
+                  }}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-semibold text-slate-800 focus:outline-none"
                   required
                 />

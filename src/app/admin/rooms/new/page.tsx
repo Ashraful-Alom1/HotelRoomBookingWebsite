@@ -45,25 +45,44 @@ export default function NewRoomPage() {
   const [washroomImages, setWashroomImages] = useState<GalleryImage[]>([]);
 
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
+  const [uploadProgressText, setUploadProgressText] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     target: "cover" | "bedroom" | "toilet" | "washroom"
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFiles = e.target.files;
+    if (!rawFiles || rawFiles.length === 0) return;
+    const files = Array.from(rawFiles);
 
     setUploadingTarget(target);
     setError(null);
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64 = reader.result as string;
+      const isMultiple = target !== "cover";
+      const filesToUpload = isMultiple ? files : [files[0]];
+      const newItems: GalleryImage[] = [];
 
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        setUploadProgressText(
+          filesToUpload.length > 1
+            ? `Uploading (${i + 1}/${filesToUpload.length})...`
+            : "Uploading to Cloudinary..."
+        );
+
+        const base64 = await readFileAsBase64(file);
         const res = await fetch("/api/admin/media/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -76,25 +95,32 @@ export default function NewRoomPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to upload to Cloudinary");
 
-        const uploadedItem: GalleryImage = {
+        newItems.push({
           publicId: data.publicId,
           secureUrl: data.secureUrl,
           width: data.width,
           height: data.height,
-          altText: `${name} ${target}`,
-        };
+          altText: `${name || "Suite"} ${target} photo`,
+        });
+      }
 
-        if (target === "cover") setCoverImage(uploadedItem);
-        else if (target === "bedroom") setGallery((prev) => [...prev, uploadedItem]);
-        else if (target === "toilet") setToiletImages((prev) => [...prev, uploadedItem]);
-        else if (target === "washroom") setWashroomImages((prev) => [...prev, uploadedItem]);
-
-        setUploadingTarget(null);
-      };
+      if (target === "cover") {
+        setCoverImage(newItems[0] || null);
+      } else if (target === "bedroom") {
+        setGallery((prev) => [...prev, ...newItems]);
+      } else if (target === "toilet") {
+        setToiletImages((prev) => [...prev, ...newItems]);
+      } else if (target === "washroom") {
+        setWashroomImages((prev) => [...prev, ...newItems]);
+      }
     } catch (err: any) {
       console.error("Upload error:", err);
-      setError(err.message || "Failed to upload image");
+      setError(err.message || "Failed to upload image(s)");
+    } finally {
       setUploadingTarget(null);
+      setUploadProgressText("");
+      // Reset input value so same files can be re-selected if needed
+      e.target.value = "";
     }
   };
 
@@ -424,12 +450,23 @@ export default function NewRoomPage() {
 
           {/* Cover Photo */}
           <div className="space-y-2">
-            <label className="text-slate-300 font-semibold">Primary Cover Photo</label>
-            <div className="flex items-center gap-4">
-              <label className="cursor-pointer px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold">Primary Cover Photo (1 Image)</label>
+              {coverImage && (
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Cover Ready
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="cursor-pointer px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15 transition-all">
                 <Upload className="w-4 h-4 text-[#D4AF37]" />
                 <span>
-                  {uploadingTarget === "cover" ? "Uploading to Cloudinary..." : "Select Cover Photo"}
+                  {uploadingTarget === "cover"
+                    ? uploadProgressText || "Uploading..."
+                    : coverImage
+                    ? "Change Cover Photo"
+                    : "Select Cover Photo"}
                 </span>
                 <input
                   type="file"
@@ -440,8 +477,16 @@ export default function NewRoomPage() {
               </label>
 
               {coverImage && (
-                <div className="relative w-16 h-12 rounded-lg overflow-hidden border border-[#D4AF37]">
+                <div className="relative group w-20 h-14 rounded-xl overflow-hidden border-2 border-[#D4AF37] shadow-lg">
                   <Image src={coverImage.secureUrl} alt="Cover preview" fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage(null)}
+                    className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-md transition-opacity shadow"
+                    title="Remove Cover Photo"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
               )}
             </div>
@@ -449,24 +494,43 @@ export default function NewRoomPage() {
 
           {/* Bedroom Gallery */}
           <div className="space-y-2">
-            <label className="text-slate-300 font-semibold">Bedroom & Living Gallery</label>
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold">
+                Bedroom &amp; Living Gallery ({gallery.length} {gallery.length === 1 ? "Photo" : "Photos"})
+              </label>
+              <span className="text-[11px] text-slate-400">Select multiple files at once</span>
+            </div>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="cursor-pointer px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15">
+              <label className="cursor-pointer px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15 transition-all">
                 <Upload className="w-4 h-4 text-[#D4AF37]" />
                 <span>
-                  {uploadingTarget === "bedroom" ? "Uploading..." : "Add Bedroom Photo"}
+                  {uploadingTarget === "bedroom"
+                    ? uploadProgressText || "Uploading..."
+                    : "Upload Multiple Bedroom Photos"}
                 </span>
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={(e) => handleFileUpload(e, "bedroom")}
                   className="hidden"
                 />
               </label>
 
               {gallery.map((img, i) => (
-                <div key={i} className="relative w-16 h-12 rounded-lg overflow-hidden border border-white/20">
-                  <Image src={img.secureUrl} alt="Preview" fill className="object-cover" />
+                <div key={i} className="relative group w-20 h-14 rounded-xl overflow-hidden border border-white/20 bg-slate-900 shadow">
+                  <Image src={img.secureUrl} alt={`Bedroom ${i + 1}`} fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setGallery((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-md transition-all shadow"
+                    title="Delete Image"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-slate-300 font-bold py-0.5">
+                    #{i + 1}
+                  </span>
                 </div>
               ))}
             </div>
@@ -474,24 +538,43 @@ export default function NewRoomPage() {
 
           {/* Toilet Gallery */}
           <div className="space-y-2">
-            <label className="text-slate-300 font-semibold">Toilet Facilities Gallery</label>
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold">
+                Toilet Facilities Gallery ({toiletImages.length} {toiletImages.length === 1 ? "Photo" : "Photos"})
+              </label>
+              <span className="text-[11px] text-slate-400">Select multiple files at once</span>
+            </div>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="cursor-pointer px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15">
+              <label className="cursor-pointer px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15 transition-all">
                 <Upload className="w-4 h-4 text-[#D4AF37]" />
                 <span>
-                  {uploadingTarget === "toilet" ? "Uploading..." : "Add Toilet Photo"}
+                  {uploadingTarget === "toilet"
+                    ? uploadProgressText || "Uploading..."
+                    : "Upload Multiple Toilet Photos"}
                 </span>
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={(e) => handleFileUpload(e, "toilet")}
                   className="hidden"
                 />
               </label>
 
               {toiletImages.map((img, i) => (
-                <div key={i} className="relative w-16 h-12 rounded-lg overflow-hidden border border-white/20">
-                  <Image src={img.secureUrl} alt="Toilet Preview" fill className="object-cover" />
+                <div key={i} className="relative group w-20 h-14 rounded-xl overflow-hidden border border-white/20 bg-slate-900 shadow">
+                  <Image src={img.secureUrl} alt={`Toilet ${i + 1}`} fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setToiletImages((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-md transition-all shadow"
+                    title="Delete Image"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-slate-300 font-bold py-0.5">
+                    #{i + 1}
+                  </span>
                 </div>
               ))}
             </div>
@@ -499,24 +582,43 @@ export default function NewRoomPage() {
 
           {/* Washroom Gallery */}
           <div className="space-y-2">
-            <label className="text-slate-300 font-semibold">Washroom & Bath Gallery</label>
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold">
+                Washroom &amp; Bath Gallery ({washroomImages.length} {washroomImages.length === 1 ? "Photo" : "Photos"})
+              </label>
+              <span className="text-[11px] text-slate-400">Select multiple files at once</span>
+            </div>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="cursor-pointer px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15">
+              <label className="cursor-pointer px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold flex items-center gap-2 border border-white/15 transition-all">
                 <Upload className="w-4 h-4 text-[#D4AF37]" />
                 <span>
-                  {uploadingTarget === "washroom" ? "Uploading..." : "Add Washroom Photo"}
+                  {uploadingTarget === "washroom"
+                    ? uploadProgressText || "Uploading..."
+                    : "Upload Multiple Washroom Photos"}
                 </span>
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={(e) => handleFileUpload(e, "washroom")}
                   className="hidden"
                 />
               </label>
 
               {washroomImages.map((img, i) => (
-                <div key={i} className="relative w-16 h-12 rounded-lg overflow-hidden border border-white/20">
-                  <Image src={img.secureUrl} alt="Washroom Preview" fill className="object-cover" />
+                <div key={i} className="relative group w-20 h-14 rounded-xl overflow-hidden border border-white/20 bg-slate-900 shadow">
+                  <Image src={img.secureUrl} alt={`Washroom ${i + 1}`} fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setWashroomImages((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-600 text-white rounded-md transition-all shadow"
+                    title="Delete Image"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-slate-300 font-bold py-0.5">
+                    #{i + 1}
+                  </span>
                 </div>
               ))}
             </div>

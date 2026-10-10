@@ -40,6 +40,8 @@ import {
   Compass,
 } from "lucide-react";
 
+import { getTodayDateString, getTomorrowDateString, isPastDate } from "@/lib/utils";
+
 const HERO_SLIDES = [
   {
     image: "/images/rooms/Okura-Nikko-Top-hero-2026-autumn-4.jpg",
@@ -76,10 +78,10 @@ export default function HomePage() {
   // Hero Slider State
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Search Widget State (Matching Screenshot 1 Layout)
+  // Search Widget State (Matching Screenshot 1 Layout - dynamically tracks current date)
   const [destinationQuery, setDestinationQuery] = useState("");
-  const [checkInDate, setCheckInDate] = useState("2026-10-11");
-  const [checkOutDate, setCheckOutDate] = useState("2026-10-12");
+  const [checkInDate, setCheckInDate] = useState(() => getTodayDateString());
+  const [checkOutDate, setCheckOutDate] = useState(() => getTomorrowDateString());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Guests & Rooms State (Matching Screenshot 2 & 3 Modal)
@@ -783,8 +785,16 @@ export default function HomePage() {
                     <input
                       type="date"
                       value={checkInDate}
-                      onChange={(e) => setCheckInDate(e.target.value)}
-                      className="w-full bg-[#14161F] border border-slate-700 rounded-lg p-2 text-white text-xs font-bold"
+                      min={getTodayDateString()}
+                      onChange={(e) => {
+                        const chosen = e.target.value;
+                        if (!chosen || isPastDate(chosen)) return;
+                        setCheckInDate(chosen);
+                        if (checkOutDate <= chosen) {
+                          setCheckOutDate(getTomorrowDateString(chosen));
+                        }
+                      }}
+                      className="w-full bg-[#14161F] border border-slate-700 rounded-lg p-2 text-white text-xs font-bold focus:outline-none focus:border-[#F5A623]"
                     />
                   </div>
                   <div>
@@ -794,12 +804,17 @@ export default function HomePage() {
                     <input
                       type="date"
                       value={checkOutDate}
-                      min={checkInDate}
+                      min={getTomorrowDateString(checkInDate)}
                       onChange={(e) => {
-                        setCheckOutDate(e.target.value);
+                        const chosen = e.target.value;
+                        if (!chosen || chosen <= checkInDate) {
+                          setCheckOutDate(getTomorrowDateString(checkInDate));
+                        } else {
+                          setCheckOutDate(chosen);
+                        }
                         setDatePickerOpen(false);
                       }}
-                      className="w-full bg-[#14161F] border border-slate-700 rounded-lg p-2 text-white text-xs font-bold"
+                      className="w-full bg-[#14161F] border border-slate-700 rounded-lg p-2 text-white text-xs font-bold focus:outline-none focus:border-[#F5A623]"
                     />
                   </div>
                 </div>

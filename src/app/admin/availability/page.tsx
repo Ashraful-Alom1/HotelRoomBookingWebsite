@@ -120,8 +120,14 @@ export default function AdminAvailabilityPage() {
               <input
                 type="date"
                 required
+                min={new Date().toISOString().split("T")[0]}
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const chosen = e.target.value;
+                  const today = new Date().toISOString().split("T")[0];
+                  if (chosen < today) setStartDate(today);
+                  else setStartDate(chosen);
+                }}
                 className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-white"
               />
             </div>
