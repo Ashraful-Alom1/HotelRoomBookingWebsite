@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
@@ -19,13 +19,29 @@ import {
   PanelLeftOpen,
   Maximize2,
   ExternalLink,
+  LogOut,
+  Lock,
+  Loader2,
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isAdmin, loading, logout } = useAuth();
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // If on admin login page, bypass layout shell
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
+  // Route Guard: Require genuine authenticated Firebase session for administrative console
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/admin/login");
+    }
+  }, [loading, user, router]);
 
   // Restore saved collapse preference
   useEffect(() => {
@@ -57,6 +73,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Review Moderation", href: "/admin/reviews", icon: Star },
     { name: "Hotel Settings", href: "/admin/settings", icon: Settings },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#070A10] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#070A10] text-slate-100 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-14 h-14 rounded-2xl gold-gradient-bg flex items-center justify-center text-black font-bold mb-4 shadow-lg shadow-[#D4AF37]/20">
+          <ShieldCheck className="w-7 h-7 text-black" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Administrator Session Required</h2>
+        <p className="text-xs text-slate-400 mb-6 max-w-sm">
+          Please sign in with your Firebase administrator credentials to access the Hotel Admin Console.
+        </p>
+        <Link
+          href="/admin/login"
+          className="px-6 py-2.5 rounded-xl gold-gradient-bg text-black font-bold text-xs uppercase tracking-wider hover:brightness-110 transition-all cursor-pointer"
+        >
+          Sign In to Admin Portal
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#070A10] text-slate-100 flex flex-col md:flex-row relative">
@@ -127,7 +171,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <ArrowLeft className="w-4 h-4" /> View Public Site
           </Link>
-          <p className="text-[10px] text-slate-500 truncate">Staff: {user?.email || "Admin Operator"}</p>
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-[10px] text-slate-400 truncate max-w-[130px]">
+              {user?.email || "Admin Operator"}
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                window.location.href = "/admin/login";
+              }}
+              className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+              title="Sign Out of Admin Console"
+            >
+              <LogOut className="w-3 h-3" /> Exit
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -268,7 +327,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Link
               href="/"
               target="_blank"
@@ -277,6 +336,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <ExternalLink className="w-3.5 h-3.5 text-[#D4AF37]" />
               <span className="hidden sm:inline">Public Site</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                window.location.href = "/admin/login";
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-950/80 border border-red-500/20 text-xs font-semibold text-red-300 hover:text-red-200 transition-colors cursor-pointer"
+              title="Sign Out of Admin Console"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
           </div>
         </header>
 

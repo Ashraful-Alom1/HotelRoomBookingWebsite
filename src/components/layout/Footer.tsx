@@ -172,7 +172,7 @@ export default function Footer() {
           <p>
             © {new Date().getFullYear()} {settings.copyrightText || `${settings.hotelName || "Grand Horizon"}. All rights reserved.`}
           </p>
-          <div className="flex gap-6">
+          <div className="flex items-center gap-6">
             <Link href="/about" className="hover:text-slate-300 transition-colors">
               Terms & Conditions
             </Link>

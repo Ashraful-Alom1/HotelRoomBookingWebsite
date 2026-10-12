@@ -25,21 +25,7 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
 };
 
 export async function getHotelSettings(): Promise<HotelSettings> {
-  // 1. Try local cache first for instant synchronous render
-  if (typeof window !== "undefined") {
-    try {
-      const cached = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        // We will return merged cache, and then optionally refresh in background
-        return { ...DEFAULT_HOTEL_SETTINGS, ...parsed };
-      }
-    } catch (e) {
-      console.warn("Error reading local settings cache:", e);
-    }
-  }
-
-  // 2. Fetch latest from Firestore
+  // 1. Fetch fresh live settings directly from Firestore on each call
   try {
     const docRef = doc(db, "settings", SETTINGS_DOC_ID);
     const snap = await getDoc(docRef);
@@ -53,7 +39,19 @@ export async function getHotelSettings(): Promise<HotelSettings> {
       return data;
     }
   } catch (error) {
-    console.warn("Firestore settings read failed, using fallback:", error);
+    console.warn("Firestore settings read warning (checking local cache):", error);
+  }
+
+  // 2. Only if Firestore is unreachable, use local cache as emergency fallback
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (cached) {
+        return { ...DEFAULT_HOTEL_SETTINGS, ...JSON.parse(cached) };
+      }
+    } catch (e) {
+      console.warn("Error reading local settings cache:", e);
+    }
   }
 
   return DEFAULT_HOTEL_SETTINGS;

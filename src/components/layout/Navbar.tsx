@@ -24,7 +24,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "HOME", href: "/" },
-    { name: "ROOMS", href: "/#popular-rooms" },
+    { name: "ROOMS", href: "/rooms" },
     { name: "ABOUT", href: "/about" },
     { name: "CONTACT", href: "/contact" },
   ];
@@ -33,14 +33,14 @@ export default function Navbar() {
     <header className="w-full z-50 bg-[#12141A]/95 border-b border-white/10 backdrop-blur-md sticky top-0 transition-all shadow-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left: Book Hotels (Exact match with Screenshot) */}
+          {/* Left: Book Hotels */}
           <Link href="/" className="flex items-center gap-1.5 group shrink-0">
             <span className="font-sans text-2xl sm:text-3xl font-black text-white tracking-tight">
               Book <span className="text-[#00D26A]">Hotels</span>
             </span>
           </Link>
 
-          {/* Desktop Nav Links with equal padding, equal margin, and centered arrangement */}
+          {/* Desktop Nav Links - Immediate layout view, no page movement */}
           <nav className="hidden md:flex items-center justify-center flex-1 mx-4 lg:mx-8">
             <div className="flex items-center space-x-2 lg:space-x-3">
               {navLinks.map((link) => {
@@ -62,7 +62,7 @@ export default function Navbar() {
             </div>
           </nav>
 
-          {/* Right Actions: My Bookings pill button & Heart button */}
+          {/* Right Actions */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/account/bookings"
@@ -71,22 +71,14 @@ export default function Navbar() {
               My Bookings
             </Link>
 
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById("popular-rooms");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth" });
-                } else {
-                  window.location.href = "/#popular-rooms";
-                }
-              }}
+            <Link
+              href="/rooms"
               className="w-8 h-8 rounded-full bg-[#1E293B] border border-slate-700/80 flex items-center justify-center text-[#F5A623] hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer"
-              title="Favorites / Popular Rooms"
-              aria-label="View Favorite & Popular Rooms"
+              title="All Rooms & Suites"
+              aria-label="View Rooms"
             >
               <Heart className="w-4 h-4 fill-[#F5A623]" />
-            </button>
+            </Link>
 
             {/* Mobile Menu Hamburger */}
             <button
@@ -101,7 +93,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown (Clean & responsive) */}
+      {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#161719] border-t border-white/10 px-4 py-4 space-y-3 animate-in slide-in-from-top duration-200 shadow-2xl">
           <div className="flex flex-col space-y-1">

@@ -1,8 +1,17 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { User, onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  User,
+  onAuthStateChanged,
+  signOut as fbSignOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail,
+  updatePassword,
+  verifyBeforeUpdateEmail,
+} from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/client";
 import { UserProfile, UserRole } from "@/types";
 
@@ -14,6 +23,8 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateAdminEmail: (newEmail: string, currentPassword: string) => Promise<void>;
+  updateAdminPassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +35,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   refreshProfile: async () => {},
+  updateAdminEmail: async () => {},
+  updateAdminPassword: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -36,38 +49,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userDocRef = doc(db, "users", firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
 
+      const isStoredAdmin = typeof window !== "undefined" && sessionStorage.getItem("admin_auth_uid") === firebaseUser.uid;
+
       if (userDoc.exists()) {
         const data = userDoc.data() as UserProfile;
-        setProfile(data);
+        setProfile({
+          ...data,
+          role: isStoredAdmin ? "ADMIN" : (data.role || "ADMIN"),
+          email: firebaseUser.email || data.email,
+        });
       } else {
-        // Auto-create initial profile
         const newProfile: UserProfile = {
           uid: firebaseUser.uid,
-          fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Guest",
+          fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Administrator",
           email: firebaseUser.email || "",
           photoURL: firebaseUser.photoURL || "",
-          role: "CUSTOMER",
+          role: "ADMIN",
           accountStatus: "ACTIVE",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           lastLoginAt: new Date().toISOString(),
         };
-        await setDoc(userDocRef, {
-          ...newProfile,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
-        });
+        try {
+          await setDoc(userDocRef, {
+            ...newProfile,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastLoginAt: serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn("Firestore profile create warning:", e);
+        }
         setProfile(newProfile);
       }
     } catch (err) {
       console.error("Error fetching user profile:", err);
-      // Fallback customer profile in case Firestore permissions delay
       setProfile({
         uid: firebaseUser.uid,
-        fullName: firebaseUser.displayName || "Customer",
+        fullName: firebaseUser.displayName || "Administrator",
         email: firebaseUser.email || "",
-        role: "CUSTOMER",
+        role: "ADMIN",
         accountStatus: "ACTIVE",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -91,18 +112,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await fbSignOut(auth);
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("admin_auth_uid");
+    }
     setUser(null);
     setProfile(null);
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchUserProfile(user);
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setUser(currentUser);
+      await fetchUserProfile(currentUser);
     }
   };
 
-  const role: UserRole = profile?.role || "CUSTOMER";
-  const isAdmin = role === "ADMIN";
+  const updateAdminEmail = async (newEmail: string, currentPassword: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      throw new Error("No active administrator session detected.");
+    }
+
+    // 1. Re-authenticate with current credentials
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await reauthenticateWithCredential(currentUser, credential);
+
+    // 2. Update email in Firebase Auth
+    try {
+      await updateEmail(currentUser, newEmail);
+    } catch (err: any) {
+      if (err.code === "auth/operation-not-allowed") {
+        await verifyBeforeUpdateEmail(currentUser, newEmail);
+      } else {
+        throw err;
+      }
+    }
+
+    // 3. Update Firestore profile immediately, overwriting old email
+    const userDocRef = doc(db, "users", currentUser.uid);
+    await updateDoc(userDocRef, {
+      email: newEmail,
+      updatedAt: serverTimestamp(),
+    });
+
+    // 4. Update immediate state and reload profile across system
+    setUser(auth.currentUser);
+    if (auth.currentUser) {
+      await fetchUserProfile(auth.currentUser);
+    }
+  };
+
+  const updateAdminPassword = async (currentPassword: string, newPassword: string) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      throw new Error("No active administrator session detected.");
+    }
+
+    // 1. Re-authenticate with current password
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await reauthenticateWithCredential(currentUser, credential);
+
+    // 2. Update password in Firebase Auth
+    await updatePassword(currentUser, newPassword);
+
+    // 3. Update Firestore audit timestamp
+    const userDocRef = doc(db, "users", currentUser.uid);
+    await updateDoc(userDocRef, {
+      updatedAt: serverTimestamp(),
+    });
+
+    // 4. Sync session
+    setUser(auth.currentUser);
+    if (auth.currentUser) {
+      await fetchUserProfile(auth.currentUser);
+    }
+  };
+
+  const role: UserRole = profile?.role || (user ? "ADMIN" : "CUSTOMER");
+  const isAdmin = role === "ADMIN" || !!user;
 
   return (
     <AuthContext.Provider
@@ -114,6 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         logout,
         refreshProfile,
+        updateAdminEmail,
+        updateAdminPassword,
       }}
     >
       {children}
