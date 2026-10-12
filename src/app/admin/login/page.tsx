@@ -75,38 +75,38 @@ export default function AdminLoginPage() {
       await refreshProfile();
       router.push("/admin");
     } catch (err: any) {
-      console.error("Firebase admin sign-in error:", err);
+      console.error("Admin sign-in error:", err);
       if (
         err.code === "auth/invalid-credential" ||
         err.code === "auth/wrong-password" ||
         err.code === "auth/invalid-login-credentials"
       ) {
         setError(
-          "Invalid email or password. Please verify the exact email and password set in your Firebase Authentication Console (Authentication > Users)."
+          "Invalid email or password. Please verify your administrative credentials."
         );
       } else if (err.code === "auth/user-not-found") {
         setError(
-          "No registered user found with this email in Firebase. Please ensure this user has been added in Firebase Console > Authentication > Users."
+          "No administrative account registered with this email address."
         );
       } else if (err.code === "auth/invalid-email") {
         setError("The email address is improperly formatted.");
       } else if (err.code === "auth/user-disabled") {
-        setError("This account has been disabled in Firebase Authentication.");
+        setError("This administrative account has been deactivated or suspended.");
       } else if (err.code === "auth/too-many-requests") {
         setError("Access temporarily blocked due to repeated failed attempts. Please reset your password or wait a few minutes.");
       } else if (err.code === "auth/operation-not-allowed") {
-        setError("Email/Password provider is disabled. Go to Firebase Console > Authentication > Sign-in method > Enable Email/Password.");
+        setError("Sign-in service is temporarily unavailable. Please try again shortly.");
       } else if (err.code === "auth/network-request-failed") {
-        setError("Network connection to Firebase failed. Please check your internet connectivity.");
+        setError("Network connection error. Please check your internet connectivity.");
       } else {
-        setError(err.message || "Failed to authenticate administrator with Firebase.");
+        setError("Authentication failed. Please check your credentials.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Genuine Firebase Password Reset
+  // Password Reset
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
@@ -122,13 +122,13 @@ export default function AdminLoginPage() {
       await sendPasswordResetEmail(auth, email.trim());
       setResetSuccess(true);
     } catch (err: any) {
-      console.error("Firebase password reset error:", err);
+      console.error("Password reset error:", err);
       if (err.code === "auth/user-not-found") {
-        setError("No user registered with this email in Firebase Authentication.");
+        setError("No account found with this email address.");
       } else if (err.code === "auth/invalid-email") {
         setError("Please enter a valid email address.");
       } else {
-        setError(err.message || "Unable to send password reset email. Please try again.");
+        setError("Unable to dispatch password recovery email. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -149,7 +149,7 @@ export default function AdminLoginPage() {
           <ArrowLeft className="w-4 h-4" /> Return to Public Site
         </Link>
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-          Firebase Verified
+          256-Bit SSL Secured
         </span>
       </div>
 
@@ -283,7 +283,7 @@ export default function AdminLoginPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-black" />
-                    <span>Verifying with Firebase...</span>
+                    <span>Verifying Credentials...</span>
                   </>
                 ) : (
                   <>
@@ -314,7 +314,7 @@ export default function AdminLoginPage() {
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Firebase will send a direct password reset link to this email address.
+                  A secure password recovery link will be dispatched to this email address.
                 </p>
               </div>
 
@@ -356,7 +356,7 @@ export default function AdminLoginPage() {
       {/* Bottom Footer */}
       <div className="max-w-md w-full mx-auto text-center z-10 pt-4">
         <p className="text-[11px] text-slate-500">
-          Hotel Management Console • Authenticated directly via Google Firebase
+          Hotel Management Console • 256-Bit SSL Encrypted & Protected
         </p>
       </div>
     </div>

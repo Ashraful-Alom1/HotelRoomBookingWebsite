@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Administrator Session Required</h2>
         <p className="text-xs text-slate-400 mb-6 max-w-sm">
-          Please sign in with your Firebase administrator credentials to access the Hotel Admin Console.
+          Please sign in with your administrator credentials to access the Hotel Admin Console.
         </p>
         <Link
           href="/admin/login"

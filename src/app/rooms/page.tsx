@@ -67,7 +67,7 @@ function RoomsContent() {
             <span>
               Showing <strong className="text-white">{rooms.length}</strong> available suite{rooms.length !== 1 ? "s" : ""}
             </span>
-            <span>Live Firestore Inventory</span>
+            <span>Live Real-Time Inventory</span>
           </div>
 
           {loading ? (

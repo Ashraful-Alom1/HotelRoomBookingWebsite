@@ -122,7 +122,7 @@ export default function AdminRoomsPage() {
         setUploadProgressText(
           filesToUpload.length > 1
             ? `Uploading (${i + 1}/${filesToUpload.length})...`
-            : "Uploading to Cloudinary..."
+            : "Uploading high-res photo..."
         );
 
         const base64 = await readFileAsBase64(file);
@@ -136,7 +136,7 @@ export default function AdminRoomsPage() {
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to upload to Cloudinary");
+        if (!res.ok) throw new Error(data.error || "Failed to upload image");
 
         newItems.push({
           publicId: data.publicId,
@@ -285,7 +285,7 @@ export default function AdminRoomsPage() {
           </span>
           <h1 className="text-3xl font-extrabold text-white mt-1">Rooms & Suites Catalog</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Configure suite specifications, Cloudinary image galleries, and pricing
+            Configure suite specifications, high-definition image galleries, and pricing
           </p>
         </div>
 
@@ -645,7 +645,7 @@ export default function AdminRoomsPage() {
               <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-white/10 space-y-6">
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4 text-[#D4AF37]" /> Cloudinary Suite Media Center
+                    <ImageIcon className="w-4 h-4 text-[#D4AF37]" /> Suite Media Center
                   </h4>
                   <p className="text-slate-400 text-[11px] mt-0.5">
                     Upload cover photo and multiple room, washroom, and toilet facility images.

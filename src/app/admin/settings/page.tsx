@@ -99,7 +99,7 @@ export default function AdminSettingsPage() {
     setEmailSaving(true);
     try {
       await updateAdminEmail(newEmail.trim(), emailCurrentPassword);
-      setEmailSuccess(`Admin email successfully updated to ${newEmail.trim()} across Firebase Auth & Firestore.`);
+      setEmailSuccess(`Admin email successfully updated to ${newEmail.trim()} across system records.`);
       setNewEmail("");
       setEmailCurrentPassword("");
       setTimeout(() => setEmailSuccess(null), 6000);
@@ -110,7 +110,7 @@ export default function AdminSettingsPage() {
       } else if (err.code === "auth/email-already-in-use") {
         setEmailError("This email address is already associated with another account.");
       } else {
-        setEmailError(err.message || "Failed to update admin email in Firebase.");
+        setEmailError(err.message || "Failed to update admin email. Please try again.");
       }
     } finally {
       setEmailSaving(false);
@@ -138,7 +138,7 @@ export default function AdminSettingsPage() {
     setPwdSaving(true);
     try {
       await updateAdminPassword(pwdCurrentPassword, newPassword);
-      setPwdSuccess("Administrator password updated successfully in Firebase Authentication. Old credentials expired.");
+      setPwdSuccess("Administrator password updated successfully. Old credentials have been invalidated.");
       setPwdCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -150,7 +150,7 @@ export default function AdminSettingsPage() {
       } else if (err.code === "auth/weak-password") {
         setPwdError("The chosen password is too weak. Please choose a stronger password.");
       } else {
-        setPwdError(err.message || "Failed to update administrator password in Firebase.");
+        setPwdError(err.message || "Failed to update administrator password. Please try again.");
       }
     } finally {
       setPwdSaving(false);
@@ -176,7 +176,7 @@ export default function AdminSettingsPage() {
         </span>
         <h1 className="text-3xl font-extrabold text-white mt-1">Management & Security Console</h1>
         <p className="text-xs text-slate-400 mt-1">
-          Manage official hotel public details, live Cloudinary assets, and Firebase admin credentials.
+          Manage official hotel public details, suite media galleries, and administrator credentials.
         </p>
 
         {/* Tab Controls */}
@@ -216,7 +216,7 @@ export default function AdminSettingsPage() {
               <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
               <div>
                 <strong className="block text-white font-semibold">Settings Saved Successfully!</strong>
-                Website footer and contact channels have been updated in Firestore & local cache.
+                Website footer and contact channels have been updated successfully.
               </div>
             </div>
           )}
@@ -410,7 +410,7 @@ export default function AdminSettingsPage() {
                 <div>
                   <h2 className="text-base font-bold text-white">Active Administrator Session</h2>
                   <p className="text-slate-400 text-xs">
-                    Protected by Firebase Authentication and Firestore Security Rules.
+                    Protected by 256-Bit SSL Encryption & Security Controls.
                   </p>
                 </div>
               </div>
@@ -433,9 +433,9 @@ export default function AdminSettingsPage() {
                 </span>
               </div>
               <div>
-                <span className="text-slate-500 block uppercase font-bold text-[10px]">Auth Provider</span>
+                <span className="text-slate-500 block uppercase font-bold text-[10px]">Security System</span>
                 <span className="text-slate-300 text-xs">
-                  Firebase Authentication
+                  Encrypted Cloud Security
                 </span>
               </div>
             </div>
@@ -450,7 +450,7 @@ export default function AdminSettingsPage() {
               </h3>
             </div>
             <p className="text-slate-400 text-[11px]">
-              Updating this address immediately updates Firebase Authentication and your Firestore profile. Old email credentials will no longer work.
+              Updating this address immediately updates your administrative profile across all systems. Previous email credentials will be permanently superseded.
             </p>
 
             {emailSuccess && (
@@ -502,7 +502,7 @@ export default function AdminSettingsPage() {
                 {emailSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-black" />
-                    <span>Synchronizing with Firebase...</span>
+                    <span>Synchronizing Credentials...</span>
                   </>
                 ) : (
                   <>
@@ -523,7 +523,7 @@ export default function AdminSettingsPage() {
               </h3>
             </div>
             <p className="text-slate-400 text-[11px]">
-              Sets a new secret password directly in Firebase Authentication. Your previous password will be immediately invalidated across all devices.
+              Sets a new secret password for administrative access. Your previous password will be immediately invalidated across all devices.
             </p>
 
             {pwdSuccess && (
@@ -587,7 +587,7 @@ export default function AdminSettingsPage() {
                 {pwdSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-black" />
-                    <span>Securing New Password in Firebase...</span>
+                    <span>Securing New Password...</span>
                   </>
                 ) : (
                   <>

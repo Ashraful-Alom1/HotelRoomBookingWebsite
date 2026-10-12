@@ -79,7 +79,7 @@ export default function NewRoomPage() {
         setUploadProgressText(
           filesToUpload.length > 1
             ? `Uploading (${i + 1}/${filesToUpload.length})...`
-            : "Uploading to Cloudinary..."
+            : "Uploading high-res photo..."
         );
 
         const base64 = await readFileAsBase64(file);
@@ -93,7 +93,7 @@ export default function NewRoomPage() {
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to upload to Cloudinary");
+        if (!res.ok) throw new Error(data.error || "Failed to upload image");
 
         newItems.push({
           publicId: data.publicId,
@@ -439,12 +439,12 @@ export default function NewRoomPage() {
           </div>
         </div>
 
-        {/* Media Uploaders to Cloudinary */}
+        {/* Media Center */}
         <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
           <div>
-            <h2 className="text-base font-bold text-white">Cloudinary Media Center</h2>
+            <h2 className="text-base font-bold text-white">Suite Media Center</h2>
             <p className="text-slate-400">
-              Upload photos directly into your Cloudinary cloud (<code>web8vmww</code>) organized by category.
+              Upload and organize high-definition room, washroom, and facility photographs.
             </p>
           </div>
 
@@ -637,7 +637,7 @@ export default function NewRoomPage() {
             </>
           ) : (
             <>
-              <CheckCircle2 className="w-5 h-5" /> Publish Suite to Firestore
+              <CheckCircle2 className="w-5 h-5" /> Publish Suite to Live Catalog
             </>
           )}
         </button>
