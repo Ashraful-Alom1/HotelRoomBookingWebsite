@@ -79,27 +79,16 @@ export default function AdminLoginPage() {
       if (
         err.code === "auth/invalid-credential" ||
         err.code === "auth/wrong-password" ||
-        err.code === "auth/invalid-login-credentials"
+        err.code === "auth/invalid-login-credentials" ||
+        err.code === "auth/user-not-found"
       ) {
-        setError(
-          "Invalid email or password. Please verify your administrative credentials."
-        );
-      } else if (err.code === "auth/user-not-found") {
-        setError(
-          "No administrative account registered with this email address."
-        );
+        setError("Invalid email or password. Please try again.");
       } else if (err.code === "auth/invalid-email") {
-        setError("The email address is improperly formatted.");
-      } else if (err.code === "auth/user-disabled") {
-        setError("This administrative account has been deactivated or suspended.");
+        setError("Please enter a valid email address.");
       } else if (err.code === "auth/too-many-requests") {
-        setError("Access temporarily blocked due to repeated failed attempts. Please reset your password or wait a few minutes.");
-      } else if (err.code === "auth/operation-not-allowed") {
-        setError("Sign-in service is temporarily unavailable. Please try again shortly.");
-      } else if (err.code === "auth/network-request-failed") {
-        setError("Network connection error. Please check your internet connectivity.");
+        setError("Too many attempts. Please try again in a few minutes or reset your password.");
       } else {
-        setError("Authentication failed. Please check your credentials.");
+        setError("Something went wrong. Please check your credentials and try again.");
       }
     } finally {
       setLoading(false);
